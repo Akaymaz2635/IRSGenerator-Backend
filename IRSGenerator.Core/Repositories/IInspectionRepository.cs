@@ -1,10 +1,12 @@
 using IRSGenerator.Core.Entities;
+using Microsoft.EntityFrameworkCore.Query;
+using System.Linq.Expressions;
 
 namespace IRSGenerator.Core.Repositories;
 
 public interface IInspectionRepository
 {
-    ValueTask<Inspection?> GetByIdAsync(long id);
+    ValueTask<Inspection?> GetByIdAsync(long id, Func<IQueryable<Inspection>, IIncludableQueryable<Inspection, object>>? include = null);
     Task<IEnumerable<Inspection>> GetAllAsync();
     Task<Inspection> AddAsync(Inspection entity);
     Task UpdateAsync(Inspection entity);

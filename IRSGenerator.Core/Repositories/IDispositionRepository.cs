@@ -1,10 +1,11 @@
 using IRSGenerator.Core.Entities;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace IRSGenerator.Core.Repositories;
 
 public interface IDispositionRepository
 {
-    ValueTask<Disposition?> GetByIdAsync(long id);
+    ValueTask<Disposition?> GetByIdAsync(long id, Func<IQueryable<Disposition>, IIncludableQueryable<Disposition, object>>? include = null);
     Task<IEnumerable<Disposition>> GetAllAsync();
     Task<Disposition> AddAsync(Disposition entity);
     Task DeleteAsync(Disposition entity);

@@ -1,10 +1,11 @@
 using IRSGenerator.Core.Entities;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace IRSGenerator.Core.Repositories;
 
 public interface IDefectTypeRepository
 {
-    ValueTask<DefectType?> GetByIdAsync(long id);
+    ValueTask<DefectType?> GetByIdAsync(long id, Func<IQueryable<DefectType>, IIncludableQueryable<DefectType, object>>? include = null);
     Task<IEnumerable<DefectType>> GetAllAsync();
     Task<DefectType> AddAsync(DefectType entity);
     Task UpdateAsync(DefectType entity);
