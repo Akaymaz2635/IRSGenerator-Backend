@@ -94,7 +94,7 @@ public class InspectionsController : ControllerBase
         Operation = i.IrsProject?.Operation,
         ProjectType = i.IrsProject?.ProjectType,
         InspectorId = i.InspectorId,
-        InspectorName = i.Inspector != null ? $"{i.Inspector.FirstName} {i.Inspector.LastName}" : null,
+        InspectorName = i.Inspector?.DisplayName,
         Status = i.Status,
         Notes = i.Notes,
         CreatedAt = i.CreatedAt,
