@@ -137,7 +137,7 @@ namespace IRSGenerator.Data
             var now = DateTime.UtcNow;
 
             // Users
-            User user1 = new() { Id = 1, EmployeeId = "6518", FirstName = "Erdem", LastName = "Demirtaş", WindowsAccount = "TEIDOM\\d6518", DisplayName = "Erdem.Demirtaş", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            User user1 = new() { Id = 1, EmployeeId = "6518", FirstName = "Erdem", LastName = "Demirtaş", WindowsAccount = "TEIDOM\\k6518", DisplayName = "Erdem.Demirtaş", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
             User user2 = new() { Id = 2, EmployeeId = "5956", FirstName = "Uras", LastName = "Erken", WindowsAccount = "TEIDOM\\k5956", DisplayName = "Uras.Erken", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
 
             // Roles
