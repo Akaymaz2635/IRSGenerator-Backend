@@ -6,7 +6,7 @@ namespace IRSGenerator.Core.Repositories;
 public interface IDefectRepository
 {
     ValueTask<Defect?> GetByIdAsync(long id, Func<IQueryable<Defect>, IIncludableQueryable<Defect, object>>? include = null);
-    Task<IEnumerable<Defect>> GetAllAsync();
+    Task<IEnumerable<Defect>> GetAllAsync(Func<IQueryable<Defect>, IIncludableQueryable<Defect, object>>? include = null);
     Task<Defect> AddAsync(Defect entity);
     Task UpdateAsync(Defect entity);
     Task DeleteAsync(Defect entity);

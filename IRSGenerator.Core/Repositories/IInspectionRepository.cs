@@ -7,7 +7,7 @@ namespace IRSGenerator.Core.Repositories;
 public interface IInspectionRepository
 {
     ValueTask<Inspection?> GetByIdAsync(long id, Func<IQueryable<Inspection>, IIncludableQueryable<Inspection, object>>? include = null);
-    Task<IEnumerable<Inspection>> GetAllAsync();
+    Task<IEnumerable<Inspection>> GetAllAsync(Func<IQueryable<Inspection>, IIncludableQueryable<Inspection, object>>? include = null);
     Task<Inspection> AddAsync(Inspection entity);
     Task UpdateAsync(Inspection entity);
     Task DeleteAsync(Inspection entity);
