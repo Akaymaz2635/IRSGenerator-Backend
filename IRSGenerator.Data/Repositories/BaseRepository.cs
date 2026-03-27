@@ -63,6 +63,22 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         await Context.SaveChangesAsync();
     }
 
+    public async Task RemoveAsync(long entityId)
+    {
+        var entity = await Context.Set<TEntity>().FindAsync(entityId);
+        if (entity != null)
+        {
+            Context.Set<TEntity>().Remove(entity);
+            await Context.SaveChangesAsync();
+        }
+    }
+
+    public void RemoveRange(IEnumerable<TEntity> entities)
+    {
+        Context.Set<TEntity>().RemoveRange(entities);
+        Context.SaveChanges();
+    }
+
     public async Task<TEntity?> FindAsync(Expression<Func<TEntity, bool>> predicate,
         Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>>? include = null)
     {
