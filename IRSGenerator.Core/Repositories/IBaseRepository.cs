@@ -22,7 +22,7 @@ public interface IBaseRepository<TEntity> where TEntity : BaseEntity
 
     Task RemoveAsync(long entityId);
 
-    void RemoveRange(IEnumerable<TEntity> entities);
+    void RemoveRange(IEnumerable<long> entityIds);
 
     Task<TEntity?> FindAsync(Expression<Func<TEntity, bool>> predicate,
         Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>>? include = null);

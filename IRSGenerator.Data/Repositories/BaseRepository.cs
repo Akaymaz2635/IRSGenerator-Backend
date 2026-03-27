@@ -73,8 +73,9 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         }
     }
 
-    public void RemoveRange(IEnumerable<TEntity> entities)
+    public void RemoveRange(IEnumerable<long> entityIds)
     {
+        var entities = Context.Set<TEntity>().Where(e => entityIds.Contains(e.Id));
         Context.Set<TEntity>().RemoveRange(entities);
         Context.SaveChanges();
     }
