@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dotnet build IRSGenerator.sln)",
       "Bash(dotnet ef migrations add InitialCreate --project IRSGenerator.Data --startup-project IRSGenerator.API)",
-      "Bash(dotnet tool install --global dotnet-ef)"
+      "Bash(dotnet tool install --global dotnet-ef)",
+      "Bash(gh repo create IRSGenerator-Backend --public --description \"IRSGenerator ASP.NET Core 8 Web API - Code First EF Core\" --source . --remote origin --push)"
     ]
   }
 }

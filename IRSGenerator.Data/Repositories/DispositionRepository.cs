@@ -1,12 +1,18 @@
-using Microsoft.EntityFrameworkCore;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace IRSGenerator.Data.Repositories;
 
 public class DispositionRepository : BaseRepository<Disposition>, IDispositionRepository
 {
     public DispositionRepository(IRSGeneratorDbContext context) : base(context) { }
+
+    public async Task DeleteAsync(Disposition entity)
+    {
+        Context.Set<Disposition>().Remove(entity);
+        await Context.SaveChangesAsync();
+    }
 
     public async Task<IEnumerable<Disposition>> GetByDefectAsync(long defectId)
         => await Context.Set<Disposition>()

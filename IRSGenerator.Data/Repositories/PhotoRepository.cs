@@ -1,12 +1,18 @@
-using Microsoft.EntityFrameworkCore;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace IRSGenerator.Data.Repositories;
 
 public class PhotoRepository : BaseRepository<Photo>, IPhotoRepository
 {
     public PhotoRepository(IRSGeneratorDbContext context) : base(context) { }
+
+    public async Task DeleteAsync(Photo entity)
+    {
+        Context.Set<Photo>().Remove(entity);
+        await Context.SaveChangesAsync();
+    }
 
     public async Task<IEnumerable<Photo>> GetByInspectionAsync(long inspectionId)
         => await Context.Set<Photo>()
@@ -16,13 +22,9 @@ public class PhotoRepository : BaseRepository<Photo>, IPhotoRepository
 
     public async Task LinkDefectAsync(long photoId, long defectId)
     {
-        var exists = await Context.Set<PhotoDefect>()
-            .AnyAsync(pd => pd.PhotoId == photoId && pd.DefectId == defectId);
-        if (!exists)
-        {
-            Context.Set<PhotoDefect>().Add(new PhotoDefect { PhotoId = photoId, DefectId = defectId });
-            await Context.SaveChangesAsync();
-        }
+        var link = new PhotoDefect { PhotoId = photoId, DefectId = defectId };
+        await Context.Set<PhotoDefect>().AddAsync(link);
+        await Context.SaveChangesAsync();
     }
 
     public async Task UnlinkDefectAsync(long photoId, long defectId)
