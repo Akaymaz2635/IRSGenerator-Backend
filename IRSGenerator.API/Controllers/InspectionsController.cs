@@ -31,10 +31,10 @@ public class InspectionsController : ControllerBase
         return Ok(ToReadDto(entity));
     }
 
-    [HttpGet("by-project/{projectId:long}")]
-    public async Task<ActionResult<IEnumerable<InspectionReadDto>>> GetByProject(long projectId)
+    [HttpGet("by-irs-project/{irsProjectId:long}")]
+    public async Task<ActionResult<IEnumerable<InspectionReadDto>>> GetByIrsProject(long irsProjectId)
     {
-        var items = await _repo.GetByProjectAsync(projectId);
+        var items = await _repo.GetByIrsProjectAsync(irsProjectId);
         return Ok(items.Select(ToReadDto));
     }
 
@@ -43,11 +43,8 @@ public class InspectionsController : ControllerBase
     {
         var entity = new Inspection
         {
-            ProjectId = dto.ProjectId,
-            PartNumber = dto.PartNumber ?? "",
-            SerialNumber = dto.SerialNumber ?? "",
-            OperationNumber = dto.OperationNumber ?? "",
-            Inspector = dto.Inspector ?? "",
+            IrsProjectId = dto.IrsProjectId,
+            InspectorId = dto.InspectorId,
             Status = dto.Status,
             Notes = dto.Notes
         };
@@ -61,11 +58,7 @@ public class InspectionsController : ControllerBase
         var entity = await _repo.GetByIdAsync(id);
         if (entity is null) return NotFound();
 
-        if (dto.ProjectId.HasValue) entity.ProjectId = dto.ProjectId.Value;
-        if (dto.PartNumber is not null) entity.PartNumber = dto.PartNumber;
-        if (dto.SerialNumber is not null) entity.SerialNumber = dto.SerialNumber;
-        if (dto.OperationNumber is not null) entity.OperationNumber = dto.OperationNumber;
-        if (dto.Inspector is not null) entity.Inspector = dto.Inspector;
+        if (dto.InspectorId.HasValue) entity.InspectorId = dto.InspectorId.Value;
         if (dto.Status is not null) entity.Status = dto.Status;
         if (dto.Notes is not null) entity.Notes = dto.Notes;
 
@@ -76,15 +69,10 @@ public class InspectionsController : ControllerBase
     [HttpPost("{id:long}/complete")]
     public async Task<IActionResult> Complete(long id)
     {
-        try
-        {
-            await _repo.SetStatusCompletedAsync(id);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var success = await _repo.SetStatusCompletedAsync(id);
+        if (!success)
+            return BadRequest(new { error = "Tüm defektlerin disposition'ı tamamlanmadan inspection kapatılamaz." });
+        return NoContent();
     }
 
     [HttpDelete("{id:long}")]
@@ -100,12 +88,13 @@ public class InspectionsController : ControllerBase
     private static InspectionReadDto ToReadDto(Inspection i) => new()
     {
         Id = i.Id,
-        ProjectId = i.ProjectId,
-        ProjectName = i.Project?.Name,
-        PartNumber = i.PartNumber,
-        SerialNumber = i.SerialNumber,
-        OperationNumber = i.OperationNumber,
-        Inspector = i.Inspector,
+        IrsProjectId = i.IrsProjectId,
+        PartNumber = i.IrsProject?.PartNumber,
+        SerialNumber = i.IrsProject?.SerialNumber,
+        Operation = i.IrsProject?.Operation,
+        ProjectType = i.IrsProject?.ProjectType,
+        InspectorId = i.InspectorId,
+        InspectorName = i.Inspector != null ? $"{i.Inspector.FirstName} {i.Inspector.LastName}" : null,
         Status = i.Status,
         Notes = i.Notes,
         CreatedAt = i.CreatedAt,

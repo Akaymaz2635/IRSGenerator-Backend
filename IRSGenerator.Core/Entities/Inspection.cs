@@ -1,17 +1,18 @@
-namespace IRSGenerator.Core.Entities;
+using System.Collections.ObjectModel;
 
-public class Inspection : BaseEntity
+namespace IRSGenerator.Core.Entities
 {
-    public long? ProjectId { get; set; }
-    public string PartNumber { get; set; } = "";
-    public string SerialNumber { get; set; } = "";
-    public string OperationNumber { get; set; } = "";
-    public string Inspector { get; set; } = "";
-    public string Status { get; set; } = "open";
-    public string? Notes { get; set; }
+    public class Inspection : BaseEntity
+    {
+        public long IrsProjectId { get; set; }
+        public long? InspectorId { get; set; }
+        public string Status { get; set; } = "open";
+        public string? Notes { get; set; }
 
-    // Navigation
-    public Project? Project { get; set; }
-    public ICollection<Defect> Defects { get; set; } = new List<Defect>();
-    public ICollection<Photo> Photos { get; set; } = new List<Photo>();
+        // Navigation
+        public IRSProject IrsProject { get; set; } = null!;
+        public User? Inspector { get; set; }
+        public ICollection<Defect> Defects { get; set; } = new Collection<Defect>();
+        public ICollection<Photo> Photos { get; set; } = new Collection<Photo>();
+    }
 }

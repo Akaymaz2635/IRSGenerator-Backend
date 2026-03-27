@@ -10,6 +10,6 @@ public interface IInspectionRepository
     Task UpdateAsync(Inspection entity);
     Task DeleteAsync(Inspection entity);
     Task<Inspection?> GetWithDetailsAsync(long id);
-    Task<IEnumerable<Inspection>> GetByProjectAsync(long projectId);
+    Task<IEnumerable<Inspection>> GetByIrsProjectAsync(long irsProjectId);
     Task<bool> SetStatusCompletedAsync(long id);
 }

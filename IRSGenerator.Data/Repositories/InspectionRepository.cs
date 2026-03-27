@@ -23,15 +23,17 @@ public class InspectionRepository : BaseRepository<Inspection>, IInspectionRepos
 
     public async Task<Inspection?> GetWithDetailsAsync(long id)
         => await Context.Set<Inspection>()
-            .Include(i => i.Project)
+            .Include(i => i.IrsProject)
+            .Include(i => i.Inspector)
             .Include(i => i.Defects).ThenInclude(d => d.DefectType)
             .Include(i => i.Defects).ThenInclude(d => d.Dispositions)
             .Include(i => i.Photos)
             .FirstOrDefaultAsync(i => i.Id == id);
 
-    public async Task<IEnumerable<Inspection>> GetByProjectAsync(long projectId)
+    public async Task<IEnumerable<Inspection>> GetByIrsProjectAsync(long irsProjectId)
         => await Context.Set<Inspection>()
-            .Where(i => i.ProjectId == projectId)
+            .Include(i => i.Inspector)
+            .Where(i => i.IrsProjectId == irsProjectId)
             .ToListAsync();
 
     public async Task<bool> SetStatusCompletedAsync(long id)
