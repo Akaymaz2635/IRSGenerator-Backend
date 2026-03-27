@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Sensitive
+appsettings.Development.json
+
+## Rider
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build IRSGenerator.sln)",
+      "Bash(dotnet ef migrations add InitialCreate --project IRSGenerator.Data --startup-project IRSGenerator.API)",
+      "Bash(dotnet tool install --global dotnet-ef)"
+    ]
+  }
+}
