@@ -152,7 +152,7 @@ namespace IRSGenerator.Data
                 new() { Id = 2, Code = Constants.Claim.Value.CharacterWrite, Description = "[Character] write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
                 new() { Id = 3, Code = Constants.Claim.Value.CategoricalPartResultWrite, Description = "[CategoricalPartResult] write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
                 new() { Id = 4, Code = Constants.Claim.Value.CategoricalZoneResultWrite, Description = "[CategoricalZoneResult] write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
-                new() { Id = 5, Code = Constants.Claim.Value.NumericPartResultWrite, Description = "[NumericPartResult] write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
+                new() { Id = 5, Code = Constants.Claim.Value.NumericalPartResultWrite, Description = "[NumericalPartResult] write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
             };
 
             // Permissions - read
@@ -162,7 +162,7 @@ namespace IRSGenerator.Data
                 new() { Id = 7, Code = Constants.Claim.Value.CharacterRead, Description = "[Character] read permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
                 new() { Id = 8, Code = Constants.Claim.Value.CategoricalPartResultRead, Description = "[CategoricalPartResult] read permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
                 new() { Id = 9, Code = Constants.Claim.Value.CategoricalZoneResultRead, Description = "[CategoricalZoneResult] read permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
-                new() { Id = 10, Code = Constants.Claim.Value.NumericPartResultRead, Description = "[NumericPartResult] read permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
+                new() { Id = 10, Code = Constants.Claim.Value.NumericalPartResultRead, Description = "[NumericalPartResult] read permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 },
             };
 
             Permission authorizationWritePermission = new() { Id = 11, Code = Constants.Claim.Value.AuthorizationWrite, Description = "Authorization write permission.", CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
