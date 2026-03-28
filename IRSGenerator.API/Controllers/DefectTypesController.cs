@@ -5,7 +5,7 @@ using IRSGenerator.Shared.Dtos.DefectType;
 
 namespace IRSGenerator.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/defect-types")]
 [ApiController]
 public class DefectTypesController : ControllerBase
 {

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inspection Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      background: #c8c8c8;
+    }
+
+    /* ── Print toolbar (screen only) ────────────────────────────────────── */
+    .print-toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: #1a3a5c; color: #fff;
+      padding: 8px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .print-toolbar h2 { font-size: 13px; font-weight: 600; flex: 1; }
+    .btn-print {
+      background: #2e6da4; color: #fff; border: none; border-radius: 4px;
+      padding: 6px 18px; font-size: 12px; font-weight: 700; cursor: pointer;
+      letter-spacing: .03em;
+    }
+    .btn-print:hover { background: #3a82c4; }
+    .btn-close {
+      background: transparent; color: rgba(255,255,255,.6);
+      border: none; font-size: 20px; cursor: pointer; line-height: 1;
+    }
+    .report-body { margin-top: 46px; }
+
+    @media print {
+      body { background: #fff; }
+      .print-toolbar { display: none !important; }
+      .report-body { margin-top: 0; }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       PORTRAIT
+    ════════════════════════════════════════════════════════════════════ */
+    .portrait .page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 16px auto;
+      padding: 14mm 16mm 22mm 16mm;
+      position: relative;
+      box-shadow: 0 3px 16px rgba(0,0,0,.2);
+    }
+
+    @media print {
+      .portrait .page {
+        width: 100%; min-height: 0;
+        margin: 0; box-shadow: none;
+        page-break-after: always;
+        padding: 14mm 16mm 22mm 16mm;
+      }
+      .portrait .page:last-child { page-break-after: auto; }
+    }
+    @page { size: A4 portrait; margin: 0; }
+
+    /* Page header */
+    .page-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 2.5px solid #1a3a5c;
+      padding-bottom: 8px; margin-bottom: 14px;
+    }
+    .hdr-left  { display: flex; align-items: center; gap: 9px; }
+    .hdr-logo-box {
+      width: 38px; height: 38px; background: #1a3a5c; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: #fff;
+    }
+    .hdr-brand-name { font-size: 13pt; font-weight: 700; color: #1a3a5c; line-height: 1.1; }
+    .hdr-brand-sub  { font-size: 7pt; color: #777; letter-spacing: .06em; text-transform: uppercase; }
+    .hdr-right { text-align: right; }
+    .hdr-doc-title  { font-size: 12pt; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: .04em; }
+    .hdr-doc-number { font-size: 7.5pt; color: #888; margin-top: 2px; }
+
+    /* Section title */
+    .section-title {
+      font-size: 8.5pt; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; color: #1a3a5c;
+      border-bottom: 1px solid #1a3a5c;
+      padding-bottom: 3px; margin: 14px 0 9px;
+    }
+
+    /* Part info table — 4-column: th td th td */
+    .info-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 4px; }
+    .info-table th, .info-table td { border: 1px solid #c8cdd4; padding: 5px 8px; }
+    .info-table th {
+      background: #1a3a5c; color: #fff;
+      font-size: 7.5pt; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em; width: 18%;
+    }
+    .info-table tr:nth-child(even) td { background: #f4f7fb; }
+    .info-table td { font-weight: 600; }
+
+    /* Status badge */
+    .badge {
+      display: inline-block; padding: 2px 9px; border-radius: 3px;
+      font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .badge-open      { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .badge-completed { background: #d4edda; color: #155724; border: 1px solid #28a745; }
+    .badge-rejected  { background: #f8d7da; color: #721c24; border: 1px solid #dc3545; }
+
+    /* Summary boxes */
+    .summary-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
+    }
+    .sum-box {
+      border: 1px solid #dde2ea; border-radius: 5px;
+      padding: 9px 8px; text-align: center;
+    }
+    .sum-box .val { font-size: 22pt; font-weight: 700; color: #1a3a5c; line-height: 1; }
+    .sum-box .lbl { font-size: 7pt; color: #777; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+    .sum-box.warn { border-color: #ffc107; }
+    .sum-box.warn .val { color: #856404; }
+    .sum-box.ok   { border-color: #28a745; }
+    .sum-box.ok   .val { color: #155724; }
+
+    /* Pareto */
+    .pareto-wrap { margin: 6px 0 14px; }
+    svg.pareto-svg { display: block; width: 100%; }
+
+    /* Notes box */
+    .notes-box {
+      border: 1px solid #dde2ea; border-radius: 4px;
+      padding: 9px 12px; min-height: 40px; margin-top: 6px; font-size: 8.5pt;
+      color: #444; background: #fafbfc; white-space: pre-wrap;
+    }
+
+    /* Defect card */
+    .defect-card {
+      border: 1px solid #c8cdd4; border-radius: 5px;
+      margin-bottom: 14px; overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .dc-header {
+      background: #1a3a5c; color: #fff;
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 12px;
+    }
+    .dc-id   { font-size: 11pt; font-weight: 700; }
+    .dc-type { font-size: 10pt; flex: 1; }
+    .dc-hm-badge {
+      font-size: 7pt; padding: 2px 8px; border-radius: 3px;
+      font-weight: 700; background: #ea580c; color: #fff; text-transform: uppercase;
+    }
+    .dc-disp-badge {
+      font-size: 7pt; padding: 2px 8px; border-radius: 3px;
+      font-weight: 700; text-transform: uppercase;
+    }
+
+    /* Measurements — horizontal 6-col grid */
+    .dc-measurements { padding: 7px 12px; border-bottom: 1px solid #dde2ea; }
+    .meas-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 0;
+    }
+    .meas-cell { padding: 3px 6px; border-right: 1px solid #eef0f3; }
+    .meas-cell:last-child { border-right: none; }
+    .meas-cell .mc-label { font-size: 6.5pt; color: #999; text-transform: uppercase; letter-spacing: .04em; }
+    .meas-cell .mc-val   { font-size: 9pt; font-weight: 700; color: #1a1a1a; margin-top: 1px; }
+    .meas-notes {
+      font-size: 8pt; color: #666;
+      padding: 4px 6px 2px; border-top: 1px solid #f0f0f0; margin-top: 4px;
+    }
+    .meas-notes span { font-weight: 600; color: #444; }
+
+    /* Photo */
+    .dc-photo {
+      padding: 10px 12px;
+      display: grid; gap: 8px;
+      background: #f6f8fb;
+    }
+    .dc-photo.photo-count-1 { grid-template-columns: 1fr; }
+    .dc-photo.photo-count-2 { grid-template-columns: 1fr 1fr; }
+    .dc-photo.photo-count-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .dc-photo.photo-count-many { grid-template-columns: repeat(3, 1fr); }
+    .dc-photo img {
+      width: 100%; max-height: 160px; object-fit: contain;
+      border: 1px solid #dde2ea; border-radius: 3px; background: #fff;
+    }
+    .dc-photo.photo-count-1 img { max-height: 200px; }
+    .photo-caption { font-size: 7pt; color: #999; text-align: center; margin-top: 2px; }
+    .photo-placeholder {
+      min-height: 120px; background: #eef1f5;
+      border: 1.5px dashed #b0b8c4; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px;
+      color: #a0a8b4; font-size: 8.5pt;
+    }
+    .ph-icon { font-size: 22pt; }
+
+    /* Disposition */
+    .dc-disposition { border-top: 1px solid #dde2ea; padding: 7px 12px; }
+    .disp-section-label {
+      font-size: 7pt; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: #888; margin-bottom: 4px;
+    }
+    .disp-row {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 3px 0; border-bottom: 1px solid #f4f4f4; font-size: 8.5pt;
+    }
+    .disp-row:last-child { border-bottom: none; }
+    .disp-pill {
+      font-size: 7pt; font-weight: 700; padding: 2px 7px; border-radius: 3px;
+      white-space: nowrap; text-transform: uppercase;
+    }
+    .dp-USE_AS_IS, .dp-KABUL_RESIM, .dp-CONFORMS { background: #d4edda; color: #155724; }
+    .dp-REWORK        { background: #cce5ff; color: #004085; }
+    .dp-RE_INSPECT    { background: #dbeafe; color: #1e3a5f; }
+    .dp-MRB_SUBMITTED { background: rgba(159,122,234,.18); color: #6b46c1; }
+    .dp-MRB_CTP       { background: rgba(159,122,234,.32); color: #553c9a; }
+    .dp-MRB_ACCEPTED  { background: rgba(128,90,213,.38);  color: #44337a; }
+    .dp-MRB_REJECTED  { background: #f8d7da; color: #721c24; }
+    .dp-VOID          { background: #e2e3e5; color: #383d41; }
+    .dp-REPAIR        { background: #fff3cd; color: #856404; }
+    .dp-SCRAP         { background: #f8d7da; color: #721c24; }
+    .dp-PENDING       { background: #fff3cd; color: #856404; }
+    .disp-note { flex: 1; color: #444; }
+    .disp-ts   { font-size: 7.5pt; color: #aaa; white-space: nowrap; }
+
+    /* Page footer */
+    .page-footer {
+      position: absolute; bottom: 8mm; left: 16mm; right: 16mm;
+      border-top: 1px solid #ccc; padding-top: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 7.5pt; color: #aaa;
+    }
+    .footer-confidential { color: #c00; font-weight: 700; font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ════════════════════════════════════════════════════════════════════
+       LANDSCAPE
+    ════════════════════════════════════════════════════════════════════ */
+    .landscape .page {
+      width: 297mm; height: 210mm;
+      background: #fff;
+      margin: 16px auto;
+      display: flex; flex-direction: column;
+      position: relative;
+      box-shadow: 0 3px 16px rgba(0,0,0,.22);
+      overflow: hidden;
+    }
+
+    @media print {
+      .landscape .page {
+        width: 100%; height: 100vh;
+        margin: 0; box-shadow: none;
+        page-break-after: always;
+      }
+      .landscape .page:last-child { page-break-after: auto; }
+    }
+
+    .landscape .page-header {
+      border-bottom: none;
+      background: #1a3a5c; color: #fff;
+      padding: 5px 14px; margin-bottom: 0;
+      flex-shrink: 0;
+    }
+    .landscape .hdr-left { gap: 8px; }
+    .landscape .hdr-brand-name { color: #fff; font-size: 11pt; }
+    .landscape .hdr-brand-sub  { color: rgba(255,255,255,.65); }
+    .landscape .hdr-part-info {
+      display: flex; gap: 18px; align-items: center; font-size: 8pt;
+    }
+    .landscape .hdr-item {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .landscape .hdr-item .hi-label { font-size: 6.5pt; opacity: .65; text-transform: uppercase; letter-spacing: .05em; color: #fff; }
+    .landscape .hdr-item .hi-val   { font-weight: 700; font-size: 8.5pt; color: #fff; }
+    .landscape .hdr-right { text-align: right; font-size: 7.5pt; color: rgba(255,255,255,.7); }
+
+    .defect-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: #f0f4f8; border-bottom: 2px solid #1a3a5c;
+      padding: 5px 14px; flex-shrink: 0;
+    }
+    .def-id   { font-size: 14pt; font-weight: 700; color: #1a3a5c; }
+    .def-type { font-size: 11pt; font-weight: 600; color: #1a3a5c; flex: 1; }
+    .def-hm   { font-size: 7.5pt; font-weight: 700; background: #ea580c; color: #fff; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; }
+    .def-status {
+      font-size: 8pt; font-weight: 700; padding: 3px 10px; border-radius: 3px;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .st-pending  { background: #fff3cd; color: #856404; }
+    .st-accepted { background: #d4edda; color: #155724; }
+    .st-rework   { background: #cce5ff; color: #004085; }
+    .st-mrb      { background: #e2d9f3; color: #4a235a; }
+    .st-scrap    { background: #f8d7da; color: #721c24; }
+    .st-void     { background: #e2e3e5; color: #383d41; }
+
+    .ls-page-body { display: flex; flex: 1; overflow: hidden; }
+
+    .photo-pane {
+      width: 58%; background: #111a24;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px; border-right: 3px solid #1a3a5c; position: relative;
+    }
+    .photo-pane img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 3px; }
+    .photo-pane .photo-placeholder {
+      min-height: unset; height: 100%; width: 100%;
+      background: #1a2535; border: 1.5px dashed #2a4060;
+      color: #445566;
+    }
+    .photo-id-stamp {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,.72); color: #fff;
+      font-size: 11pt; font-weight: 700; font-family: monospace;
+      padding: 3px 10px; border-radius: 3px;
+    }
+
+    .info-pane {
+      width: 42%; display: flex; flex-direction: column;
+      padding: 10px 12px; gap: 0; overflow: hidden;
+    }
+    .ls-section-label {
+      font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #888;
+      border-bottom: 1px solid #dde2ea;
+      padding-bottom: 2px; margin-bottom: 6px; margin-top: 6px;
+    }
+    .ls-section-label:first-child { margin-top: 0; }
+
+    .ls-meas-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px;
+    }
+    .ls-meas-cell { background: #f4f7fb; border-radius: 3px; padding: 4px 6px; }
+    .ls-mc-label { font-size: 6pt; color: #999; text-transform: uppercase; letter-spacing: .04em; }
+    .ls-mc-val   { font-size: 10pt; font-weight: 700; color: #1a1a1a; }
+
+    .ls-notes-line { font-size: 8pt; color: #555; padding: 3px 2px; border-top: 1px solid #f0f0f0; margin-top: 2px; }
+    .ls-notes-line span { font-weight: 600; color: #333; }
+
+    .disp-table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+    .disp-table td { font-size: 7.5pt; padding: 3px 4px; border-bottom: 1px solid #f4f4f4; vertical-align: top; }
+    .disp-table tr:last-child td { border-bottom: none; }
+    .disp-active-row { background: #f8fffe; }
+    .disp-table .disp-note-td { color: #444; line-height: 1.35; }
+    .disp-table .disp-ts-td   { color: #aaa; white-space: nowrap; font-size: 7pt; }
+
+    .ls-photo-count-note { font-size: 7.5pt; color: #888; margin-top: auto; }
+
+    /* Continuation page */
+    .photo-pane-wide {
+      width: 85%; background: #111a24;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px; border-right: 3px solid #1a3a5c; position: relative;
+    }
+    .photo-pane-wide img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 3px; }
+    .info-strip {
+      width: 15%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 14px 8px; background: #f4f7fb; text-align: center; gap: 10px;
+    }
+    .is-id   { font-size: 22pt; font-weight: 700; color: #1a3a5c; line-height: 1; }
+    .is-type { font-size: 8.5pt; font-weight: 600; color: #445; line-height: 1.3; }
+    .is-counter { font-size: 8pt; color: #aaa; border-top: 1px solid #dde2ea; padding-top: 8px; width: 100%; }
+    .is-counter strong { display: block; font-size: 14pt; color: #1a3a5c; font-weight: 700; }
+
+    .ls-page-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid #dde2ea;
+      padding: 3px 14px; font-size: 7pt; color: #aaa; flex-shrink: 0;
+    }
+    .ls-page-footer .footer-confidential { color: #b00; font-weight: 700; text-transform: uppercase; font-size: 6.5pt; letter-spacing: .05em; }
+
+    /* ── Defect link notices ─────────────────────────────────────────── */
+    .defect-link-notice {
+      font-size: 8pt; padding: 4px 10px; margin: 4px 0;
+      border-radius: 3px; line-height: 1.4;
+    }
+    .origin-notice { background: #fff8e1; border-left: 3px solid #f59e0b; color: #78350f; }
+    .child-notice  { background: #e0f2fe; border-left: 3px solid #0284c7; color: #0c4a6e; }
+
+    /* ── Measurement snapshot ────────────────────────────────────────── */
+    .snap-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 0 3px 24px; }
+    .snap-cell { background: #f1f5f9; border-radius: 3px; padding: 2px 6px; font-size: 7.5pt; }
+    .snap-lbl  { color: #94a3b8; margin-right: 3px; text-transform: uppercase; font-size: 6.5pt; }
+    .snap-val  { font-weight: 700; color: #334155; }
+
+    /* ── Pre/Post comparison table ───────────────────────────────────── */
+    .pre-post-wrap { margin: 4px 0 4px 24px; }
+    .pre-post-title { font-size: 7pt; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 3px; letter-spacing: .05em; }
+    .pre-post-table { border-collapse: collapse; font-size: 8pt; }
+    .pre-post-table th { font-size: 7pt; color: #94a3b8; text-transform: uppercase; padding: 1px 8px; text-align: center; }
+    .pre-post-table td { padding: 2px 8px; border-bottom: 1px solid #f1f5f9; }
+    .ppt-lbl   { color: #64748b; font-size: 7.5pt; }
+    .ppt-pre   { color: #94a3b8; text-decoration: line-through; text-align: right; }
+    .ppt-arrow { color: #cbd5e1; text-align: center; padding: 0 4px; }
+    .ppt-post  { font-weight: 600; color: #334155; }
+    .ppt-post.changed { color: #b45309; font-weight: 700; }
+    .meas-changed { background: #fffbeb; }
+
+    /* ── Loading / error ──────────────────────────────────────────────── */
+    .loading-screen, .error-screen {
+      min-height: 60vh; display: flex; align-items: center;
+      justify-content: center; font-size: 13pt;
+    }
+    .error-screen { color: #dc2626; }
+    .loading-screen { color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar" id="toolbar">
+    <h2 id="toolbar-title">Inspection Report</h2>
+    <button class="btn-print" onclick="window.print()">🖨 Yazdır / PDF Kaydet</button>
+    <button class="btn-close" onclick="window.close()" title="Kapat">&#x2715;</button>
+  </div>
+  <div class="report-body" id="report-root">
+    <div class="loading-screen">Rapor yükleniyor&hellip;</div>
+  </div>
+  <script type="module" src="/static/js/report.js"></script>
+</body>
+</html>

@@ -4,7 +4,8 @@ using IRSGenerator.Shared.Dtos.VisualSystemConfig;
 
 namespace IRSGenerator.API.Controllers;
 
-[Route("api/[controller]")]
+// Her iki route da çalışır: /api/system-config  ve  /api/VisualSystemConfig
+[Route("api/system-config")]
 [ApiController]
 public class VisualSystemConfigController : ControllerBase
 {

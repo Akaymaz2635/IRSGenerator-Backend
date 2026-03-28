@@ -27,6 +27,7 @@ namespace IRSGenerator.Data
         public DbSet<CategoricalZoneResult> CategoricalZoneResults { get; set; }
 
         // QualiSight entities
+        public DbSet<VisualProject> VisualProjects { get; set; }
         public DbSet<Inspection> Inspections { get; set; }
         public DbSet<Defect> Defects { get; set; }
         public DbSet<DefectType> DefectTypes { get; set; }
@@ -35,6 +36,8 @@ namespace IRSGenerator.Data
         public DbSet<Photo> Photos { get; set; }
         public DbSet<PhotoDefect> PhotoDefects { get; set; }
         public DbSet<VisualSystemConfig> VisualSystemConfigs { get; set; }
+        public DbSet<DispositionType> DispositionTypes { get; set; }
+        public DbSet<DispositionTransition> DispositionTransitions { get; set; }
 
         private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -60,6 +63,18 @@ namespace IRSGenerator.Data
             // QualiSight model configuration
             modelBuilder.Entity<PhotoDefect>().HasKey(pd => new { pd.PhotoId, pd.DefectId });
 
+            modelBuilder.Entity<Inspection>()
+                .HasOne(i => i.VisualProject)
+                .WithMany(p => p.Inspections)
+                .HasForeignKey(i => i.VisualProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Inspection>()
+                .HasOne(i => i.InspectorUser)
+                .WithMany()
+                .HasForeignKey(i => i.InspectorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<Defect>()
                 .HasOne(d => d.OriginDefect)
                 .WithMany(d => d.ChildDefects)
@@ -70,13 +85,29 @@ namespace IRSGenerator.Data
                 .HasOne(i => i.IrsProject)
                 .WithMany(p => p.Inspections)
                 .HasForeignKey(i => i.IrsProjectId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
-            modelBuilder.Entity<Inspection>()
-                .HasOne(i => i.Inspector)
-                .WithMany()
-                .HasForeignKey(i => i.InspectorId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // DispositionType — unique index on Code
+            modelBuilder.Entity<DispositionType>()
+                .HasIndex(dt => dt.Code)
+                .IsUnique();
+
+            // DispositionTransition — Code-based FKs (string, not Id-based)
+            modelBuilder.Entity<DispositionTransition>()
+                .HasOne(t => t.FromType)
+                .WithMany(dt => dt.TransitionsFrom)
+                .HasForeignKey(t => t.FromCode)
+                .HasPrincipalKey(dt => dt.Code)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
+            modelBuilder.Entity<DispositionTransition>()
+                .HasOne(t => t.ToType)
+                .WithMany(dt => dt.TransitionsTo)
+                .HasForeignKey(t => t.ToCode)
+                .HasPrincipalKey(dt => dt.Code)
+                .OnDelete(DeleteBehavior.Restrict);
 
             SeedData(modelBuilder);
         }
@@ -208,6 +239,59 @@ namespace IRSGenerator.Data
                     .Concat(userWriteRolePermissions)
                     .Concat(userReadRolePermissions)
                     .ToList());
+
+            // ── DispositionType seed ──────────────────────────────────────────
+            var dt1  = new DispositionType { Id =  1, Code = "USE_AS_IS",    Label = "Kabul (Spec)",                             CssClass = "disp-accepted",      IsNeutralizing = true,  IsInitial = true,  SortOrder =  1, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt2  = new DispositionType { Id =  2, Code = "KABUL_RESIM",  Label = "Kabul (Resim)",                            CssClass = "disp-accepted",      IsNeutralizing = true,  IsInitial = true,  SortOrder =  2, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt3  = new DispositionType { Id =  3, Code = "CONFORMS",     Label = "Uygun (Inspector)",                        CssClass = "disp-conforms",      IsNeutralizing = true,  IsInitial = false, SortOrder =  3, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt4  = new DispositionType { Id =  4, Code = "REWORK",       Label = "Rework",                                   CssClass = "disp-rework",        IsNeutralizing = false, IsInitial = true,  SortOrder =  4, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt5  = new DispositionType { Id =  5, Code = "RE_INSPECT",   Label = "Yeniden İnceleme",                         CssClass = "disp-re-inspect",    IsNeutralizing = false, IsInitial = true,  SortOrder =  5, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt6  = new DispositionType { Id =  6, Code = "CTP_RE_INSPECT", Label = "CTP — Sonraki Op. Yeniden İnceleme",     CssClass = "disp-mrb-ctp",       IsNeutralizing = false, IsInitial = true,  SortOrder =  6, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt7  = new DispositionType { Id =  7, Code = "MRB_SUBMITTED", Label = "MRB Gönderildi",                          CssClass = "disp-mrb-submitted", IsNeutralizing = false, IsInitial = true,  SortOrder =  7, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt8  = new DispositionType { Id =  8, Code = "MRB_CTP",      Label = "CTP — MRB (Devam)",                        CssClass = "disp-mrb-ctp",       IsNeutralizing = false, IsInitial = true,  SortOrder =  8, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt9  = new DispositionType { Id =  9, Code = "MRB_ACCEPTED", Label = "MRB Kabul",                                CssClass = "disp-mrb-accepted",  IsNeutralizing = true,  IsInitial = false, SortOrder =  9, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt10 = new DispositionType { Id = 10, Code = "MRB_REJECTED", Label = "MRB Ret",                                  CssClass = "disp-mrb-rejected",  IsNeutralizing = true,  IsInitial = false, SortOrder = 10, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt11 = new DispositionType { Id = 11, Code = "VOID",         Label = "Void",                                     CssClass = "disp-void",          IsNeutralizing = true,  IsInitial = true,  SortOrder = 11, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt12 = new DispositionType { Id = 12, Code = "REPAIR",       Label = "Repair",                                   CssClass = "disp-repair",        IsNeutralizing = true,  IsInitial = true,  SortOrder = 12, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+            var dt13 = new DispositionType { Id = 13, Code = "SCRAP",        Label = "Scrap",                                    CssClass = "disp-scrap",         IsNeutralizing = true,  IsInitial = true,  SortOrder = 13, Active = true, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 };
+
+            modelBuilder.Entity<DispositionType>().HasData(dt1, dt2, dt3, dt4, dt5, dt6, dt7, dt8, dt9, dt10, dt11, dt12, dt13);
+
+            // ── DispositionTransition seed ────────────────────────────────────
+            // null FromCode = initial (no prior decision)
+            // FromCode matches allowedNextDecisions() logic in inspection-detail.js
+            var transitions = new List<DispositionTransition>();
+            long tid = 1;
+
+            void AddTransition(string? from, string to) =>
+                transitions.Add(new DispositionTransition { Id = tid++, FromCode = from, ToCode = to, CreatedAt = now, CreatedById = 1, UpdatedAt = now, UpdatedById = 1 });
+
+            // Initial (null → FULL_DECISIONS)
+            string[] fullDecisions = ["USE_AS_IS","KABUL_RESIM","REWORK","RE_INSPECT","CTP_RE_INSPECT","MRB_SUBMITTED","MRB_CTP","VOID","REPAIR","SCRAP"];
+            foreach (var code in fullDecisions) AddTransition(null, code);
+
+            // REWORK → CONFORMS + FULL_DECISIONS (re-inspect implicit after rework)
+            AddTransition("REWORK", "CONFORMS");
+            foreach (var code in fullDecisions) AddTransition("REWORK", code);
+
+            // RE_INSPECT (bağımsız seçim olarak başlangıçtan seçilebilir) → CONFORMS + FULL_DECISIONS
+            AddTransition("RE_INSPECT", "CONFORMS");
+            foreach (var code in fullDecisions) AddTransition("RE_INSPECT", code);
+
+            // CTP_RE_INSPECT → CONFORMS + FULL_DECISIONS
+            AddTransition("CTP_RE_INSPECT", "CONFORMS");
+            foreach (var code in fullDecisions) AddTransition("CTP_RE_INSPECT", code);
+
+            // MRB_SUBMITTED → MRB_CTP | MRB_ACCEPTED | MRB_REJECTED
+            AddTransition("MRB_SUBMITTED", "MRB_CTP");
+            AddTransition("MRB_SUBMITTED", "MRB_ACCEPTED");
+            AddTransition("MRB_SUBMITTED", "MRB_REJECTED");
+
+            // MRB_CTP → MRB_ACCEPTED | MRB_REJECTED
+            AddTransition("MRB_CTP", "MRB_ACCEPTED");
+            AddTransition("MRB_CTP", "MRB_REJECTED");
+
+            modelBuilder.Entity<DispositionTransition>().HasData(transitions);
         }
     }
 }

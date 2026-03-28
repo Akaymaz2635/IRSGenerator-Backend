@@ -1,139 +1,214 @@
-# Integration Guide
+# QualiSight UI Entegrasyon Rehberi
 
-## Adım 1: Kopyalanacak Dosyalar
+Bu klasördeki dosyalar IRSGenerator projesine kopyalanarak QualiSight görsel muayene
+UI'sini backend'e bağlar. Her OS'ta tarayıcıdan erişim sağlar.
+
+---
+
+## AŞAMA 1 — Önceki entegrasyondan gelen dosyalar (değişmeden geçerli)
 
 ### IRSGenerator.API/Controllers/ klasörüne kopyala (replace):
-- DefectFieldsController.cs
-- DefectsController.cs
-- DefectTypesController.cs
-- DispositionsController.cs
-- InspectionsController.cs
-- PhotosController.cs
+Aşağıdaki dosyalar önceki entegrasyonda eklenmiş olmalı:
+- DefectFieldsController.cs, DefectsController.cs, DefectTypesController.cs
+- DispositionsController.cs, InspectionsController.cs, PhotosController.cs
 - VisualSystemConfigController.cs
 
-### IRSGenerator.Core/Entities/ klasörüne kopyala (yeni dosyalar):
-- Inspection.cs
-- Defect.cs
-- DefectType.cs
-- DefectField.cs
-- Disposition.cs
-- Photo.cs
-- PhotoDefect.cs
-- VisualSystemConfig.cs
+### IRSGenerator.Core/Entities/ klasörüne kopyala:
+- Defect.cs, DefectField.cs, DefectType.cs, Disposition.cs
+- Photo.cs, PhotoDefect.cs, VisualSystemConfig.cs
 
-### IRSGenerator.Core/Repositories/ klasörüne kopyala (yeni dosyalar):
-- IInspectionRepository.cs
-- IDefectRepository.cs
-- IDefectTypeRepository.cs
-- IDefectFieldRepository.cs
-- IDispositionRepository.cs
-- IPhotoRepository.cs
-- IVisualSystemConfigRepository.cs
+### IRSGenerator.Core/Repositories/ klasörüne kopyala:
+- IDefectRepository.cs, IDefectFieldRepository.cs, IDefectTypeRepository.cs
+- IDispositionRepository.cs, IPhotoRepository.cs, IVisualSystemConfigRepository.cs
 
-### IRSGenerator.Data/Repositories/ klasörüne kopyala (yeni dosyalar):
-- InspectionRepository.cs
-- DefectRepository.cs
-- DefectTypeRepository.cs
-- DefectFieldRepository.cs
-- DispositionRepository.cs
-- PhotoRepository.cs
-- VisualSystemConfigRepository.cs
+### IRSGenerator.Data/Repositories/ klasörüne kopyala:
+- DefectRepository.cs, DefectFieldRepository.cs, DefectTypeRepository.cs
+- DispositionRepository.cs, PhotoRepository.cs, VisualSystemConfigRepository.cs
 
-### IRSGenerator.Shared/Dtos/ klasörüne kopyala (tüm alt klasörlerle birlikte):
-- Defect/
-- DefectField/
-- DefectType/
-- Disposition/
-- Inspection/
-- Photo/
-- VisualSystemConfig/
+### IRSGenerator.Shared/Dtos/ klasörüne kopyala:
+- Defect/, DefectField/, DefectType/, Disposition/
 
 ---
 
-## Adım 2: IRSProject.cs'e navigation ekle
+## AŞAMA 2 — Bu entegrasyon (QualiSight UI bağlantısı)
 
-IRSGenerator.Core/Entities/IRSProject.cs dosyasına şunu ekle:
+### 2.1 Tüm mevcut Controllers'ları replace et:
+```
+Backend/IRSGenerator.API/Controllers/  →  IRSGenerator.API/Controllers/
+```
+(Tüm dosyalar dahil: yeni ProjectsController, AuthController, UsersController)
+
+### 2.2 Tüm Entities'leri güncelle:
+
+**Inspection.cs** — Tamamen replace et (yeni alanlar: VisualProjectId, PartNumber, SerialNumber, OperationNumber, Inspector)
+
+**VisualProject.cs** — YENİ dosya, kopyala:
+```
+Backend/IRSGenerator.Core/Entities/VisualProject.cs
+```
+
+**User.cs — KRİTİK:**
+Mevcut User.cs'i silme. Sadece şu 3 alanı ekle:
+```csharp
+public string? PasswordHash { get; set; }
+public string Role { get; set; } = "inspector";
+public bool Active { get; set; } = true;
+```
+
+### 2.3 Repository arayüzlerini güncelle:
+```
+Backend/IRSGenerator.Core/Repositories/  →  IRSGenerator.Core/Repositories/
+```
+(IInspectionRepository ve IPhotoRepository değişti, IVisualProjectRepository ve IUserRepository eklendi)
+
+### 2.4 Repository implementasyonlarını güncelle:
+```
+Backend/IRSGenerator.Data/Repositories/  →  IRSGenerator.Data/Repositories/
+```
+(InspectionRepository ve PhotoRepository değişti, VisualProjectRepository ve UserRepository eklendi)
+
+### 2.5 DTOs'leri güncelle:
+```
+Backend/IRSGenerator.Shared/Dtos/  →  IRSGenerator.Shared/Dtos/
+```
+(Inspection/ değişti, Project/, User/, Auth/ eklendi)
+
+### 2.6 IRSGeneratorDbContext.cs — Şunları ekle:
+```
+Backend/IRSGenerator.Data/IRSGeneratorDbContext.cs
+```
+Bu dosyayı tamamen replace et. (VisualProject DbSet + yeni model konfigürasyonları eklendi)
+
+### 2.7 Program.cs — Tamamen replace et:
+```
+Backend/IRSGenerator.API/Program.cs
+```
+(UseStaticFiles, snake_case JSON, IVisualProjectRepository, IUserRepository kayıtları)
+
+### 2.8 wwwroot klasörünü kopyala:
+```
+Backend/IRSGenerator.API/wwwroot/  →  IRSGenerator.API/wwwroot/
+```
+(QualiSight UI statik dosyaları — index.html, static/, photos/)
+
+---
+
+## AŞAMA 3 — UserConfiguration.cs güncelleme
+
+`IRSGenerator.Data/Configurations/UserConfiguration.cs` dosyasına yeni sütunları ekle:
 
 ```csharp
-// Children - QualiSight görsel kontroller
-public ICollection<Inspection> Inspections { get; set; } = new Collection<Inspection>();
+builder.Property(u => u.PasswordHash).HasMaxLength(64).IsRequired(false);
+builder.Property(u => u.Role).HasMaxLength(20).HasDefaultValue("inspector").IsRequired();
+builder.Property(u => u.Active).HasDefaultValue(true).IsRequired();
+```
+
+Ayrıca seed data'daki User nesnelerine `Role = "admin"` ve `Active = true` ekle.
+
+---
+
+## AŞAMA 4 — Disposition Tipleri (Dinamik Workflow)
+
+### 4.1 Yeni entity dosyalarını kopyala:
+```
+Backend/IRSGenerator.Core/Entities/DispositionType.cs     → IRSGenerator.Core/Entities/
+Backend/IRSGenerator.Core/Entities/DispositionTransition.cs → IRSGenerator.Core/Entities/
+```
+
+### 4.2 Yeni repository arayüzlerini kopyala:
+```
+Backend/IRSGenerator.Core/Repositories/IDispositionTypeRepository.cs → IRSGenerator.Core/Repositories/
+Backend/IRSGenerator.Core/Repositories/IDispositionTransitionRepository.cs → IRSGenerator.Core/Repositories/
+```
+
+### 4.3 Yeni repository implementasyonlarını kopyala:
+```
+Backend/IRSGenerator.Data/Repositories/DispositionTypeRepository.cs → IRSGenerator.Data/Repositories/
+Backend/IRSGenerator.Data/Repositories/DispositionTransitionRepository.cs → IRSGenerator.Data/Repositories/
+```
+
+### 4.4 Yeni DTO klasörlerini kopyala:
+```
+Backend/IRSGenerator.Shared/Dtos/DispositionType/     → IRSGenerator.Shared/Dtos/
+Backend/IRSGenerator.Shared/Dtos/DispositionTransition/ → IRSGenerator.Shared/Dtos/
+```
+
+### 4.5 Yeni Controller dosyalarını kopyala:
+```
+Backend/IRSGenerator.API/Controllers/DispositionTypesController.cs → IRSGenerator.API/Controllers/
+Backend/IRSGenerator.API/Controllers/DispositionTransitionsController.cs → IRSGenerator.API/Controllers/
 ```
 
 ---
 
-## Adım 3: IRSGeneratorDbContext.cs'e ekle
+## AŞAMA 5 — Migration oluştur
 
-Mevcut DbSet'lerin altına ekle:
-```csharp
-public DbSet<Inspection> Inspections { get; set; }
-public DbSet<Defect> Defects { get; set; }
-public DbSet<DefectType> DefectTypes { get; set; }
-public DbSet<DefectField> DefectFields { get; set; }
-public DbSet<Disposition> Dispositions { get; set; }
-public DbSet<Photo> Photos { get; set; }
-public DbSet<PhotoDefect> PhotoDefects { get; set; }
-public DbSet<VisualSystemConfig> VisualSystemConfigs { get; set; }
-```
-
-OnModelCreating'e ekle:
-```csharp
-modelBuilder.Entity<PhotoDefect>().HasKey(pd => new { pd.PhotoId, pd.DefectId });
-
-modelBuilder.Entity<Defect>()
-    .HasOne(d => d.OriginDefect)
-    .WithMany(d => d.ChildDefects)
-    .HasForeignKey(d => d.OriginDefectId)
-    .OnDelete(DeleteBehavior.Restrict);
-
-modelBuilder.Entity<Inspection>()
-    .HasOne(i => i.IrsProject)
-    .WithMany(p => p.Inspections)
-    .HasForeignKey(i => i.IrsProjectId)
-    .OnDelete(DeleteBehavior.Restrict);
-
-modelBuilder.Entity<Inspection>()
-    .HasOne(i => i.Inspector)
-    .WithMany()
-    .HasForeignKey(i => i.InspectorId)
-    .OnDelete(DeleteBehavior.SetNull);
-```
-
----
-
-## Adım 4: Program.cs'e DI kayıtları ekle
-
-```csharp
-builder.Services.AddScoped<IInspectionRepository, InspectionRepository>();
-builder.Services.AddScoped<IDefectRepository, DefectRepository>();
-builder.Services.AddScoped<IDefectTypeRepository, DefectTypeRepository>();
-builder.Services.AddScoped<IDefectFieldRepository, DefectFieldRepository>();
-builder.Services.AddScoped<IDispositionRepository, DispositionRepository>();
-builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
-builder.Services.AddScoped<IVisualSystemConfigRepository, VisualSystemConfigRepository>();
-```
-
----
-
-## Adım 5: Migration oluştur
-
-```
-Add-Migration AddQualiSightEntities
+```powershell
+Add-Migration AddQualiSightWithDispositionTypes
 Update-Database
 ```
+
+Migration şunları ekleyecek:
+- `VisualProjects` tablosu (yeni)
+- `DispositionTypes` tablosu + seed (13 kayıt)
+- `DispositionTransitions` tablosu + seed (39 geçiş kuralı)
+- `Inspections` tablosuna: `VisualProjectId`, `PartNumber`, `SerialNumber`, `OperationNumber`, `Inspector` sütunları
+- `Inspections.IrsProjectId` artık nullable
+- `Users` tablosuna: `PasswordHash`, `Role`, `Active` sütunları
+
+---
+
+## AŞAMA 6 — Seed data güncelleme (isteğe bağlı)
+
+DbContext'teki User seed data'sına şifre eklemek için AuthController.HashPassword kullanabilirsiniz:
+```csharp
+User user1 = new() { ..., Role = "admin", Active = true, PasswordHash = "..." };
+```
+
+Veya ilk giriş için şifresiz bırakın (PasswordHash = null → şifresiz giriş kabul edilir).
+
+---
+
+## AŞAMA 7 — Test
+
+1. Proje başlat: `http://localhost:[port]` → QualiSight UI açılmalı
+2. Admin: `http://localhost:[port]/admin.html`
+3. Swagger: `http://localhost:[port]/swagger`
 
 ---
 
 ## Mimari Özet
 
 ```
-IRSProject (mevcut)
-  ├── Characters[]        → boyutsal kontrol (IRSGenerator)
-  └── Inspections[]       → görsel kontrol (QualiSight) ← YENİ
-        ├── Defects[]
-        │     ├── DefectType
-        │     └── Dispositions[]
-        └── Photos[]
+[Tarayıcı — Chrome/Firefox/Edge]
+        │
+        ▼
+IRSGenerator.API (ASP.NET Core 8)
+  ├── /                  → wwwroot/index.html  (QualiSight UI)
+  ├── /api/projects      → ProjectsController  (VisualProject CRUD)
+  ├── /api/auth/login    → AuthController      (sicil + şifre)
+  ├── /api/users         → UsersController
+  ├── /api/inspections   → InspectionsController
+  ├── /api/defects       → DefectsController
+  ├── /api/defect-types  → DefectTypesController
+  ├── /api/defect-fields → DefectFieldsController
+  ├── /api/dispositions              → DispositionsController
+  ├── /api/disposition-types        → DispositionTypesController  (YENİ)
+  ├── /api/disposition-transitions  → DispositionTransitionsController (YENİ)
+  ├── /api/photos        → PhotosController (file upload)
+  └── /api/system-config → VisualSystemConfigController
+        │
+        ▼
+SQL Server / PostgreSQL
 ```
 
-User entity'si her iki sistem tarafından ortak kullanılır.
-Project, PartNumber, SerialNumber, Operation bilgileri IRSProject'ten gelir.
+---
+
+## JSON Değişikliği Notu
+
+Program.cs'e `JsonNamingPolicy.SnakeCaseLower` eklendi.
+Bu tüm API endpoint'lerini etkiler. WPF client'ı kullanıyorsanız
+HttpClient konfigürasyonuna şunu ekleyin:
+```csharp
+var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+```

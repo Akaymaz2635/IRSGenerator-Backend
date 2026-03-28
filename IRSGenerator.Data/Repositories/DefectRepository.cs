@@ -32,5 +32,6 @@ public class DefectRepository : BaseRepository<Defect>, IDefectRepository
         => await Context.Set<Defect>()
             .Include(d => d.DefectType)
             .Include(d => d.Dispositions.OrderByDescending(disp => disp.CreatedAt))
+            .Include(d => d.ChildDefects)
             .FirstOrDefaultAsync(d => d.Id == id);
 }

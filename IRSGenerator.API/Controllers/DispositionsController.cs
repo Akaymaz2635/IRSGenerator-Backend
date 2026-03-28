@@ -24,19 +24,16 @@ public class DispositionsController : ControllerBase
         return Ok(ToReadDto(entity));
     }
 
-    [HttpGet("by-defect/{defectId:long}")]
-    public async Task<ActionResult<IEnumerable<DispositionReadDto>>> GetByDefect(long defectId)
+    // GET /api/dispositions?defect_id=X
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<DispositionReadDto>>> GetByDefect(
+        [FromQuery] long? defect_id = null)
     {
-        var items = await _repo.GetByDefectAsync(defectId);
-        return Ok(items.Select(ToReadDto));
-    }
+        if (!defect_id.HasValue)
+            return BadRequest(new { detail = "defect_id gereklidir." });
 
-    [HttpGet("active/by-defect/{defectId:long}")]
-    public async Task<ActionResult<DispositionReadDto>> GetActiveByDefect(long defectId)
-    {
-        var entity = await _repo.GetActiveByDefectAsync(defectId);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var items = await _repo.GetByDefectAsync(defect_id.Value);
+        return Ok(items.Select(ToReadDto));
     }
 
     [HttpPost]

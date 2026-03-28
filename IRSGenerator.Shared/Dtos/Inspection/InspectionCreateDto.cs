@@ -2,8 +2,11 @@ namespace IRSGenerator.Shared.Dtos.Inspection;
 
 public class InspectionCreateDto
 {
-    public long IrsProjectId { get; set; }
-    public long? InspectorId { get; set; }
+    public long? ProjectId { get; set; }        // → VisualProjectId  (snake: project_id)
+    public string? PartNumber { get; set; }
+    public string? SerialNumber { get; set; }
+    public string? OperationNumber { get; set; }
+    public string? Inspector { get; set; }
     public string Status { get; set; } = "open";
     public string? Notes { get; set; }
 }

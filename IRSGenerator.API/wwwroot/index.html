@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QualiSight — Muayene Sistemi</title>
+  <script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('qs-theme')||'dark');}());</script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <button id="sidebar-hamburger" class="sidebar-hamburger" title="Menüyü Genişlet">&#9776;</button>
+
+      <div class="sidebar-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M1 12C4.5 5.5 19.5 5.5 23 12C19.5 18.5 4.5 18.5 1 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+            <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">QualiSight</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ul class="nav-links">
+          <li class="nav-item">
+            <a href="#/" class="nav-link" data-route="dashboard">
+              <span class="nav-icon">&#9664;</span>
+              <span class="nav-label">Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#/inspections" class="nav-link" data-route="inspections">
+              <span class="nav-icon">&#128203;</span>
+              <span class="nav-label">Muayeneler</span>
+            </a>
+          </li>
+          <li class="nav-item" id="nav-item-settings">
+            <a href="#/settings" class="nav-link" data-route="settings">
+              <span class="nav-icon">&#9881;</span>
+              <span class="nav-label">Ayarlar</span>
+            </a>
+          </li>
+          <li class="nav-item" id="nav-item-analytics">
+            <a href="#/analytics" class="nav-link" data-route="analytics">
+              <span class="nav-icon">&#128200;</span>
+              <span class="nav-label">Analitik</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <a href="#/inspections" id="open-insp-indicator" class="open-insp-indicator hidden">
+        <span class="open-insp-dot"></span>
+        <span id="open-insp-text"></span>
+      </a>
+
+      <div class="sidebar-footer">
+        <span class="version-label">v1.0.0</span>
+        <button id="theme-toggle-btn" class="theme-toggle-btn" title="Tema değiştir">
+          <span class="theme-toggle-icon">☀️</span>
+          <span class="theme-toggle-label">Açık Tema</span>
+        </button>
+        <button id="tablet-toggle-btn" class="tablet-toggle-btn" title="Görünüm değiştir">
+          <span class="tablet-toggle-icon">📱</span>
+          <span class="tablet-toggle-label">Tablet Modu</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Sidebar backdrop (tablet mode expanded) -->
+    <div id="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div id="page-root">
+        <div class="loading">Yükleniyor...</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-container" class="modal-container">
+      <!-- injected by modal.open() -->
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

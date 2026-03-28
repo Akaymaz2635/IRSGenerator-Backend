@@ -1,15 +1,7 @@
 using IRSGenerator.API.Extensions;
-using IRSGenerator.API.Services;
-using IRSGenerator.API.Utils;
-using IRSGenerator.Core;
 using IRSGenerator.Core.Repositories;
-using IRSGenerator.Core.Services;
-using IRSGenerator.Data;
 using IRSGenerator.Data.Repositories;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Negotiate;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 var dbConnectionString = builder.Configuration.GetConnectionString("PosgresConnection") ?? "";
@@ -31,24 +23,50 @@ builder.Services.AddScoped<IDispositionRepository, DispositionRepository>();
 builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
 builder.Services.AddScoped<IVisualSystemConfigRepository, VisualSystemConfigRepository>();
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Yeni QualiSight repository kayıtları
+builder.Services.AddScoped<IVisualProjectRepository, VisualProjectRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IDispositionTypeRepository, DispositionTypeRepository>();
+builder.Services.AddScoped<IDispositionTransitionRepository, DispositionTransitionRepository>();
+
+// IRSGenerator core repository kayıtları
+builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
+builder.Services.AddScoped<INumericPartResultRepository, NumericPartResultRepository>();
+builder.Services.AddScoped<ICategoricalPartResultRepository, CategoricalPartResultRepository>();
+builder.Services.AddScoped<ICategoricalZoneResultRepository, CategoricalZoneResultRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(opt =>
+    {
+        // snake_case JSON — frontend'le uyumluluk için
+        opt.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+        opt.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// QualiSight UI'yi wwwroot'tan sun (index.html → /)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// SPA fallback — hash routing için (opsiyonel)
+app.MapFallbackToFile("index.html");
 
 app.Run();

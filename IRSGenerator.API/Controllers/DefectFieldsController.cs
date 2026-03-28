@@ -5,7 +5,7 @@ using IRSGenerator.Shared.Dtos.DefectField;
 
 namespace IRSGenerator.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/defect-fields")]
 [ApiController]
 public class DefectFieldsController : ControllerBase
 {
@@ -17,9 +17,15 @@ public class DefectFieldsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<DefectFieldReadDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<DefectFieldReadDto>>> GetAll(
+        [FromQuery] long? defect_type_id = null)
     {
-        var items = await _repo.GetAllAsync();
+        IEnumerable<DefectField> items;
+        if (defect_type_id.HasValue)
+            items = await _repo.GetByDefectTypeAsync(defect_type_id.Value);
+        else
+            items = await _repo.GetAllAsync();
+
         return Ok(items.Select(ToReadDto));
     }
 
@@ -29,13 +35,6 @@ public class DefectFieldsController : ControllerBase
         var entity = await _repo.GetByIdAsync(id);
         if (entity is null) return NotFound();
         return Ok(ToReadDto(entity));
-    }
-
-    [HttpGet("by-defect-type/{defectTypeId:long}")]
-    public async Task<ActionResult<IEnumerable<DefectFieldReadDto>>> GetByDefectType(long defectTypeId)
-    {
-        var items = await _repo.GetByDefectTypeAsync(defectTypeId);
-        return Ok(items.Select(ToReadDto));
     }
 
     [HttpPost]

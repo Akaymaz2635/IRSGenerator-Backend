@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QualiSight — Admin</title>
+  <script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('qs-theme')||'dark');}());</script>
+  <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-header">
+      <div class="admin-logo-row">
+        <div class="admin-logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M1 12C4.5 5.5 19.5 5.5 23 12C19.5 18.5 4.5 18.5 1 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+            <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <div class="admin-logo-title">QualiSight</div>
+          <div class="admin-logo-sub">Admin Paneli</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="admin-nav" id="admin-nav">
+      <a href="#/dashboard" data-page="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="#/users" data-page="users">
+        <span class="nav-icon">👥</span> Kullanıcılar
+      </a>
+      <a href="#/projects" data-page="projects">
+        <span class="nav-icon">🏗</span> Projeler
+      </a>
+      <a href="#/defect-types" data-page="defect-types">
+        <span class="nav-icon">🔧</span> Hata Tipleri
+      </a>
+      <a href="#/defect-fields" data-page="defect-fields">
+        <span class="nav-icon">📋</span> Hata Alanları
+      </a>
+      <a href="#/disposition-types" data-page="disposition-types">
+        <span class="nav-icon">⚖</span> Karar Tipleri
+      </a>
+      <a href="#/config" data-page="config">
+        <span class="nav-icon">⚙️</span> Sistem Yapılandırması
+      </a>
+      <a href="#/backup" data-page="backup">
+        <span class="nav-icon">🔒</span> Güvenlik &amp; Yedek
+      </a>
+    </nav>
+
+    <div class="admin-sidebar-footer">
+      <button id="theme-toggle-btn" class="admin-theme-toggle-btn" title="Tema değiştir">
+        <span class="theme-toggle-icon">☀️</span>
+        <span class="theme-toggle-label">Açık Tema</span>
+      </button>
+      <a class="btn-return" href="/">← Uygulamaya Dön</a>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <main class="admin-main" id="admin-content">
+    <div class="admin-loading">Yükleniyor…</div>
+  </main>
+
+</div>
+
+<!-- ── Toast container ── -->
+<div id="admin-toast-container"></div>
+
+<!-- ── Modal overlay ── -->
+<div class="modal-overlay hidden" id="admin-modal-overlay">
+  <div class="modal-box" id="admin-modal-box"></div>
+</div>
+
+<script type="module" src="/static/js/admin.js"></script>
+</body>
+</html>

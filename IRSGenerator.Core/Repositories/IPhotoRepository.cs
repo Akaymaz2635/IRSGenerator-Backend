@@ -10,6 +10,8 @@ public interface IPhotoRepository
     Task<Photo> AddAsync(Photo entity);
     Task DeleteAsync(Photo entity);
     Task<IEnumerable<Photo>> GetByInspectionAsync(long inspectionId);
+    Task<IEnumerable<Photo>> GetByDefectAsync(long defectId);
     Task LinkDefectAsync(long photoId, long defectId);
     Task UnlinkDefectAsync(long photoId, long defectId);
+    Task SetDefectsAsync(long photoId, IEnumerable<long> defectIds);
 }

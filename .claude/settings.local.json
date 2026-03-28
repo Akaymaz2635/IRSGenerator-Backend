@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Read(//c/Users/PC/Desktop/**)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(xargs cat:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(dotnet ef:*)"
+    ]
+  }
+}

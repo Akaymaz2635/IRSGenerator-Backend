@@ -1,6 +1,5 @@
 using IRSGenerator.Core.Entities;
 using Microsoft.EntityFrameworkCore.Query;
-using System.Linq.Expressions;
 
 namespace IRSGenerator.Core.Repositories;
 
@@ -13,5 +12,6 @@ public interface IInspectionRepository
     Task DeleteAsync(Inspection entity);
     Task<Inspection?> GetWithDetailsAsync(long id);
     Task<IEnumerable<Inspection>> GetByIrsProjectAsync(long irsProjectId);
+    Task<IEnumerable<Inspection>> GetFilteredAsync(string? status, long? visualProjectId, string? search);
     Task<bool> SetStatusCompletedAsync(long id);
 }
