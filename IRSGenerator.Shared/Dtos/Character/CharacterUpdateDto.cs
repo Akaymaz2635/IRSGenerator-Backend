@@ -10,4 +10,5 @@ public class CharacterUpdateDto
     public string? InspectionLevel { get; set; }
     public string? Remarks { get; set; }
     public string? InspectionResult { get; set; }
+    public string? Note { get; set; }
 }

@@ -14,10 +14,14 @@ public class Character : BaseEntity
     public double LowerLimit { get; set; }
     public double UpperLimit { get; set; }
     public string InspectionResult { get; set; } = "Unidentified";
+    public string? Note { get; set; }
 
-    // Parent
-    public long IRSProjectId { get; set; }
+    // Parent — either via IRS Project (template reuse) or directly via Inspection
+    public long? IRSProjectId { get; set; }
     public IRSProject? IRSProject { get; set; }
+
+    public long? InspectionId { get; set; }
+    public Inspection? Inspection { get; set; }
 
     // Children
     public ICollection<NumericPartResult> NumericPartResults { get; set; }
@@ -26,4 +30,6 @@ public class Character : BaseEntity
         = new Collection<CategoricalPartResult>();
     public ICollection<CategoricalZoneResult> CategoricalZoneResults { get; set; }
         = new Collection<CategoricalZoneResult>();
+    public ICollection<Disposition> Dispositions { get; set; }
+        = new Collection<Disposition>();
 }

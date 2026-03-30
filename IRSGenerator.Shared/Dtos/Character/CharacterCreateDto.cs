@@ -9,5 +9,6 @@ public class CharacterCreateDto
     public string? BPZone { get; set; }
     public string? InspectionLevel { get; set; }
     public string? Remarks { get; set; }
-    public long IRSProjectId { get; set; }
+    public long? IRSProjectId { get; set; }
+    public long? InspectionId { get; set; }
 }

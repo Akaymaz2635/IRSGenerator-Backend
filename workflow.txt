@@ -1,0 +1,161 @@
+==============================================================
+  IRSGenerator + QualiSight — Program Workflow (2026-03-29)
+==============================================================
+
+─────────────────────────────────────────────────────────────
+1. ENTITIES (Core katmanı)
+─────────────────────────────────────────────────────────────
+IRSProject          → Şablon proje (PartNo, Operation, OpSheetPath)
+  └─ Character[]    → Muayene kalemleri (ItemNo, Dimension, Badge,
+                       Tooling, BPZone, InspLevel, LowerLimit,
+                       UpperLimit, InspectionResult, Note)
+                         └─ NumericPartResult[]   (Actual:string, PartLabel)
+                         └─ CategoricalPartResult[] (IsConfirmed, AdditionalInfo)
+                         └─ CategoricalZoneResult[]  (ZoneName, IsConfirmed)
+
+Inspection          → Muayene örneği (PartNo, SerialNo, OpNo, Inspector,
+                       Status, Notes, IrsProjectId, VisualProjectId)
+  └─ Character[]    (inspection_id ile bağlı)
+  └─ Defect[]       (DefectTypeId, Depth, Location, Photo)
+     └─ Disposition (state machine: DispositionType, Transitions)
+
+Photo               → Dosya yolu meta verisi
+User / Role / Permission → RBAC
+VisualProject / VisualSystemConfig → QualiSight entegrasyonu
+DefectType / DefectField           → Hata taksonomisi
+
+─────────────────────────────────────────────────────────────
+2. API ENDPOINTS (17 Controller)
+─────────────────────────────────────────────────────────────
+IRSGenerator akışı:
+  POST   /api/irs-projects                   → Şablon proje oluştur
+  POST   /api/irs-projects/{id}/parse-opsheet → Word .docx → Character[]
+  GET    /api/irs-projects                   → Liste
+  GET    /api/irs-projects/{id}              → Detay + Character[]
+
+  POST   /api/inspections                    → Muayene oluştur
+  GET    /api/inspections                    → Liste
+  GET    /api/inspections/{id}               → Detay
+  PUT    /api/inspections/{id}               → Güncelle / kapat
+
+  GET    /api/characters?inspection_id=X     → Muayene kalemlerini getir
+  POST   /api/characters                     → Kalem ekle (LimitCatcher çalışır)
+  PUT    /api/characters/{id}                → Sonuç/not güncelle
+  DELETE /api/characters/{id}               → Sil
+
+  POST   /api/numeric-part-results           → Ölçüm kaydet
+  DELETE /api/numeric-part-results?character_id=X  → Toplu sil
+  GET    /api/numeric-part-results?character_id=X  → Listele
+
+  POST   /api/categorical-part-results      → LOT sonucu kaydet
+  DELETE /api/categorical-part-results?character_id=X
+  GET    /api/categorical-part-results?character_id=X
+
+  POST   /api/categorical-zone-results      → Bölge sonucu kaydet
+  DELETE /api/categorical-zone-results?character_id=X
+  GET    /api/categorical-zone-results?character_id=X
+
+  POST   /api/defects                        → Hata kaydet
+  GET/PUT/DELETE /api/defects/{id}
+
+QualiSight akışı:
+  /api/projects, /api/visual-system-config
+  /api/defect-types, /api/defect-fields
+  /api/dispositions, /api/disposition-types, /api/disposition-transitions
+  /api/photos, /api/users, /api/auth
+
+─────────────────────────────────────────────────────────────
+3. FRONTEND SAYFALAR (wwwroot/static/js/pages/)
+─────────────────────────────────────────────────────────────
+IRSGenerator akışı:
+  irs-projects.js          → Şablon proje listesi
+  irs-project-detail.js    → Proje detayı, Character şablonları
+  character-detail.js      → Tek karakter kartı
+  inspections.js           → Muayene listesi
+  inspection-form.js       → Muayene oluşturma sihirbazı
+  inspection-detail.js     → BÜYÜK DOSYA (94KB)
+                              ├─ Dimensional Tab: Character grid + detail modal
+                              ├─ LOT Tab: Categorical grid + detail modal
+                              ├─ Defects Tab: Hata kayıt
+                              └─ _renderStats: Conform/Not Conform sayaçları
+
+QualiSight / Admin:
+  admin-dashboard, admin-backup, admin-config, admin-defect-fields,
+  admin-defect-types, admin-disposition-types, admin-projects, admin-users
+  analytics.js, dashboard.js, settings.js
+
+─────────────────────────────────────────────────────────────
+4. TEMEL AKIŞ
+─────────────────────────────────────────────────────────────
+[A] Şablon Kurulum
+  1. irs-projects.js → POST /api/irs-projects  → IRSProject DB'ye kaydolur
+  2. Kullanıcı Word .docx yükler
+     → WordOpSheetParser.Parse() çalışır
+       • Her satırı okur, "RECORD*" içerenleri atlar
+       • ItemNo / Dimension / Badge / Tooling / BPZone / InspLevel çıkarır
+     → POST /api/irs-projects/{id}/parse-opsheet
+     → Character[]  DB'ye kaydolur, LimitCatcher Dimension'ı parse eder
+
+[B] Muayene Başlatma
+  3. inspection-form.js → POST /api/inspections
+     (PartNo, SerialNo, OpNo, Inspector, IrsProjectId)
+  4. Backend: IRSProject'teki Character'lar Inspection'a kopyalanır
+
+[C] Ölçüm Girişi (inspection-detail.js)
+  5. GET /api/characters?inspection_id=X → Character[] yüklenir
+  6. Kullanıcı listedeki kaleme tıklar → _openDetailModal(c) açılır
+
+  [Dimensional karakter]
+    • Part sayısı ±  → dm-parts-container güncellenir
+    • Actual girişi text (örn. "15/16") — type="text"
+    • Save → _saveModalDimensional(c, null):
+        1. DELETE /api/numeric-part-results?character_id=X
+        2. POST  /api/numeric-part-results × N  (Actual:string, PartLabel)
+        3. "15/16" split → parseFloat → min/max hesapla
+        4. Conform? → PUT /api/characters/{id} {inspection_result, note}
+        5. _charState güncelle → UI yenile
+    • Manual Accept/Reject → overrideResult ile aynı akış
+
+  [LOT karakter]
+    • Part + Zone sayısı ±
+    • Her part: Conform / Not Conform seçimi
+    • Save → _saveModalLot(c):
+        1. DELETE categorical + zone by character_id
+        2. POST CategoricalPartResult × N
+        3. POST CategoricalZoneResult × N
+        4. Herhangi biri Not Conform → overall = "Not Conform"
+        5. PUT /api/characters/{id}
+
+[D] Hata Kaydı
+  7. Defects Tab → POST /api/defects (InspectionId, DefectTypeId, ...)
+  8. Disposition state machine yönetimi
+
+[E] Raporlama
+  9. WordReportWriter → Inspection + Character[] + NumericPartResult[]
+     → .docx çıktısı
+
+─────────────────────────────────────────────────────────────
+5. TEKNİK NOTLAR
+─────────────────────────────────────────────────────────────
+• DB: PostgreSQL, EF Core, snake_case JSON (Program.cs)
+• Migration: __EFMigrationsHistory ile yönetilir
+  - Son migration (20260329100000) doğrudan SQL ile uygulandı:
+      ALTER TABLE "Characters" ADD COLUMN "Note" text;
+      ALTER TABLE "NumericPartResults" ALTER COLUMN "Actual" TYPE text;
+      ALTER TABLE "NumericPartResults" ADD COLUMN "PartLabel" text;
+• LimitCatcher: "10.5 +0.2/-0.1" → Lower=10.3, Upper=10.7
+• Terminoloji: Acceptable→Conform, Not Acceptable→Not Conform
+• Part etiketi: "{SerialNumber}-{i}" (örn. "SN001-1")
+• "15/16" desteği: Actual string, parse sırasında "/" ile split
+
+─────────────────────────────────────────────────────────────
+6. EKSİK / RİSK NOKTALARI (bilinen)
+─────────────────────────────────────────────────────────────
+□ EF migration history tablosu senkron değil (manual SQL ile uygulandı)
+□ _saveNumeric (center panel tek-part hızlı kayıt) ile modal arası
+  çift kayıt riski var mı? → Kontrol gerekebilir
+□ character-detail.js sayfası modal ile overlap yaşar mı?
+□ WordReportWriter → Actual artık string; toplama/ortalama hesabı varsa hata
+□ LOT modal: zone count sıfır iken save → boş array POST edilir, sorun yok
+□ Kategori result index alanı ne zaman kullanılıyor? → Controller'da kontrol et
+==============================================================

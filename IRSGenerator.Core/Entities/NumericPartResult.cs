@@ -2,7 +2,8 @@ namespace IRSGenerator.Core.Entities;
 
 public class NumericPartResult : BaseEntity
 {
-    public double Actual { get; set; }
+    public string Actual { get; set; } = "";
+    public string? PartLabel { get; set; }
 
     // Parent
     public long CharacterId { get; set; }

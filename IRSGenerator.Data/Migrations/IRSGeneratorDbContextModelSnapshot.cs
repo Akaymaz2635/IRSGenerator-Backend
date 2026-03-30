@@ -132,7 +132,10 @@ namespace IRSGenerator.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<long>("IRSProjectId")
+                    b.Property<long?>("IRSProjectId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("InspectionId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("InspectionLevel")
@@ -143,6 +146,9 @@ namespace IRSGenerator.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text")
                         .HasDefaultValue("Unidentified");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
 
                     b.Property<string>("ItemNo")
                         .IsRequired()
@@ -169,6 +175,8 @@ namespace IRSGenerator.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("InspectionId");
 
                     b.HasIndex("IRSProjectId");
 
@@ -389,11 +397,14 @@ namespace IRSGenerator.Data.Migrations
                     b.Property<DateTime?>("DecidedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long?>("CharacterId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Decision")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<long>("DefectId")
+                    b.Property<long?>("DefectId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Engineer")
@@ -435,6 +446,8 @@ namespace IRSGenerator.Data.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CharacterId");
 
                     b.HasIndex("CreatedByUserId");
 
@@ -1304,6 +1317,9 @@ namespace IRSGenerator.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<string>("OpSheetPath")
+                        .HasColumnType("text");
+
                     b.Property<string>("OperationNumber")
                         .HasColumnType("text");
 
@@ -1352,8 +1368,14 @@ namespace IRSGenerator.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<double>("Actual")
-                        .HasColumnType("double precision");
+                    b.Property<string>("Actual")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("PartLabel")
+                        .HasColumnType("text");
 
                     b.Property<long>("CharacterId")
                         .HasColumnType("bigint");
@@ -2212,11 +2234,15 @@ namespace IRSGenerator.Data.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("IRSGenerator.Core.Entities.Inspection", "Inspection")
+                        .WithMany()
+                        .HasForeignKey("InspectionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("IRSGenerator.Core.Entities.IRSProject", "IRSProject")
                         .WithMany("Characters")
                         .HasForeignKey("IRSProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
                         .WithMany()
@@ -2224,6 +2250,8 @@ namespace IRSGenerator.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("Inspection");
 
                     b.Navigation("IRSProject");
 
@@ -2308,6 +2336,12 @@ namespace IRSGenerator.Data.Migrations
 
             modelBuilder.Entity("IRSGenerator.Core.Entities.Disposition", b =>
                 {
+                    b.HasOne("IRSGenerator.Core.Entities.Character", "Character")
+                        .WithMany("Dispositions")
+                        .HasForeignKey("CharacterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired(false);
+
                     b.HasOne("IRSGenerator.Core.Entities.User", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId");
@@ -2316,11 +2350,13 @@ namespace IRSGenerator.Data.Migrations
                         .WithMany("Dispositions")
                         .HasForeignKey("DefectId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired(false);
 
                     b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId");
+
+                    b.Navigation("Character");
 
                     b.Navigation("CreatedByUser");
 
@@ -2656,6 +2692,8 @@ namespace IRSGenerator.Data.Migrations
                     b.Navigation("CategoricalPartResults");
 
                     b.Navigation("CategoricalZoneResults");
+
+                    b.Navigation("Dispositions");
 
                     b.Navigation("NumericPartResults");
                 });

@@ -11,4 +11,5 @@ public interface IDispositionRepository
     Task DeleteAsync(Disposition entity);
     Task<IEnumerable<Disposition>> GetByDefectAsync(long defectId);
     Task<Disposition?> GetActiveByDefectAsync(long defectId);
+    Task<IEnumerable<Disposition>> GetByCharacterIdAsync(long characterId);
 }

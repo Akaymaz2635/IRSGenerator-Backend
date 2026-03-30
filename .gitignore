@@ -16,3 +16,10 @@ appsettings.Development.json
 ## OS
 .DS_Store
 Thumbs.db
+
+## Uploaded user data — do not commit
+IRSGenerator.API/wwwroot/op-sheets/
+IRSGenerator.API/wwwroot/photos/
+
+## Claude Code internal
+.claude/

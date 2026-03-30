@@ -3,7 +3,7 @@ import { session } from '../session.js';
 
 function statusBadge(status) {
   const map    = { open: 'badge-open', completed: 'badge-completed', rejected: 'badge-rejected' };
-  const labels = { open: 'Açık', completed: 'Tamamlandı', rejected: 'Reddedildi' };
+  const labels = { open: 'Open', completed: 'Completed', rejected: 'Rejected' };
   return `<span class="badge ${map[status] || ''}">${labels[status] || status}</span>`;
 }
 
@@ -30,19 +30,19 @@ export async function inspectionsPage() {
 
   root.innerHTML = `
     <div class="page-header">
-      <h1>Muayeneler</h1>
+      <h1>Inspections</h1>
       <div class="page-header-actions">
-        ${session.canWrite() ? '<a href="#/inspections/new" class="btn btn-primary">+ Yeni Muayene</a>' : ''}
+        ${session.canWrite() ? '<a href="#/inspections/new" class="btn btn-primary">+ New Inspection</a>' : ''}
       </div>
     </div>
 
     <div class="filter-bar">
-      <input type="text" class="form-input" id="search-input" placeholder="Parça no, seri no veya muayeneci ara..." />
+      <input type="text" class="form-input" id="search-input" placeholder="Search part no, serial no or inspector..." />
       <select class="form-select" id="status-filter">
-        <option value="">Tüm Durumlar</option>
-        <option value="open">Açık</option>
-        <option value="completed">Tamamlandı</option>
-        <option value="rejected">Reddedildi</option>
+        <option value="">All Statuses</option>
+        <option value="open">Open</option>
+        <option value="completed">Completed</option>
+        <option value="rejected">Rejected</option>
       </select>
       <select class="form-select" id="project-filter">
         <option value="">Tüm Projeler</option>
@@ -72,7 +72,7 @@ export async function inspectionsPage() {
     try {
       const inspections = await api.inspections.list(params);
       if (inspections.length === 0) {
-        tableArea.innerHTML = '<div class="empty">Muayene bulunamadı.</div>';
+        tableArea.innerHTML = '<div class="empty">No inspections found.</div>';
         return;
       }
 
@@ -103,9 +103,9 @@ export async function inspectionsPage() {
               <th>Seri No</th>
               <th>Op. No</th>
               <th>Proje</th>
-              <th>Muayeneci</th>
-              <th>Durum</th>
-              <th>Tarih</th>
+              <th>Inspector</th>
+              <th>Status</th>
+              <th>Date</th>
               <th></th>
             </tr>
           </thead>
@@ -116,10 +116,10 @@ export async function inspectionsPage() {
       tableArea.querySelectorAll('.delete-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const id = Number(btn.dataset.id);
-          if (!confirm(`#${id} numaralı muayeneyi silmek istediğinize emin misiniz?`)) return;
+          if (!confirm(`Are you sure you want to delete inspection #${id}?`)) return;
           try {
             await api.inspections.delete(id);
-            window.toast('Muayene silindi.', 'success');
+            window.toast('Inspection deleted.', 'success');
             await loadTable();
           } catch (err) {
             window.toast('Silme hatası: ' + err.message, 'error');

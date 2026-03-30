@@ -132,9 +132,17 @@ function dispositionBadge(disp) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function formatLimits(lower, upper) {
+  const INF = 1.7976931348623157e+308;
+  if (lower != null && upper != null && upper >= INF) return `≥ ${lower.toFixed(4)}`;
+  if (upper != null && lower != null && lower <= 0 && upper < INF) return `≤ ${upper.toFixed(4)}`;
+  if (lower != null && upper != null) return `${lower.toFixed(4)} ↔ ${upper.toFixed(4)}`;
+  return 'No limits defined';
+}
+
 function statusBadge(status) {
   const map    = { open: 'badge-open', completed: 'badge-completed', rejected: 'badge-rejected' };
-  const labels = { open: 'Açık', completed: 'Tamamlandı', rejected: 'Reddedildi' };
+  const labels = { open: 'Open', completed: 'Completed', rejected: 'Rejected' };
   return `<span class="badge ${map[status] || ''}">${labels[status] || status}</span>`;
 }
 function fmt(v)         { return (v === null || v === undefined) ? '—' : String(v); }
@@ -165,7 +173,7 @@ function getCheckedDefectIds(containerId) {
 // ── Ana sayfa ────────────────────────────────────────────────────────────────
 export async function inspectionDetailPage(id) {
   const root = document.getElementById('page-root');
-  root.innerHTML = '<div class="loading">Yükleniyor...</div>';
+  root.innerHTML = '<div class="loading">Loading...</div>';
   await render(id, root);
 }
 
@@ -180,7 +188,7 @@ async function render(id, root) {
   ]);
 
   if (!detail) {
-    root.innerHTML = '<div class="empty text-danger">Muayene bulunamadı.</div>';
+    root.innerHTML = '<div class="empty text-danger">Inspection not found.</div>';
     return;
   }
 
@@ -318,24 +326,25 @@ async function render(id, root) {
 
   // ── HTML ─────────────────────────────────────────────────────
   root.innerHTML = `
-    <a href="#/inspections" class="back-link">← Muayeneler</a>
+    <a href="#/inspections" class="back-link">← Inspections</a>
 
     <div class="page-header">
-      <h1>Muayene #${id} ${statusBadge(detail.status)}</h1>
+      <h1>Inspection #${id} ${statusBadge(detail.status)}</h1>
       <div class="page-header-actions">
         ${pageCanWrite ? `
         <select class="status-select" id="status-quick-change">
-          <option value="open"      ${detail.status==='open'      ?'selected':''}>Açık</option>
-          <option value="completed" ${detail.status==='completed' ?'selected':''}>Tamamlandı</option>
-          <option value="rejected"  ${detail.status==='rejected'  ?'selected':''}>Reddedildi</option>
+          <option value="open"      ${detail.status==='open'      ?'selected':''}>Open</option>
+          <option value="completed" ${detail.status==='completed' ?'selected':''}>Completed</option>
+          <option value="rejected"  ${detail.status==='rejected'  ?'selected':''}>Rejected</option>
         </select>` : ''}
         <div class="dropdown" id="report-dropdown">
-          <button class="btn btn-ghost btn-sm" id="report-dropdown-btn">Rapor ▾</button>
+          <button class="btn btn-ghost btn-sm" id="report-dropdown-btn">Visual Report ▾</button>
           <div class="dropdown-menu" id="report-dropdown-menu">
-            <button class="dropdown-item" id="report-portrait-btn">A4 Dikey (Özet + Hatalar)</button>
             <button class="dropdown-item" id="report-landscape-btn">A4 Yatay (Hata başına sayfa)</button>
           </div>
         </div>
+        <a class="btn btn-ghost btn-sm" id="word-report-btn" href="${api.inspections.reportUrl(id)}" download>📄 Dimensional Report</a>
+        <a class="btn btn-ghost btn-sm" id="combined-report-btn" href="${api.inspections.combinedReportUrl(id)}" download>📋 Combined Report</a>
         ${pageCanWrite ? `<a href="#/inspections/${id}/edit" class="btn btn-ghost btn-sm">Düzenle</a>` : ''}
         ${pageCanWrite ? `<button class="btn btn-danger btn-sm" id="delete-insp-btn">Sil</button>` : ''}
       </div>
@@ -343,16 +352,16 @@ async function render(id, root) {
 
     <!-- Bilgi kartı -->
     <div class="card">
-      <div class="card-header"><span class="card-title">Muayene Bilgileri</span></div>
+      <div class="card-header"><span class="card-title">Inspection Info</span></div>
       <div class="info-grid">
         ${[
-          ['Proje',           detail.project_name],
-          ['Parça Numarası',  detail.part_number],
-          ['Seri Numarası',   detail.serial_number],
-          ['Operasyon No',    detail.operation_number],
-          ['Muayeneci',       detail.inspector],
-          ['Tarih',           detail.date],
-          ['Oluşturulma',     fmtDate(detail.created_at)],
+          ['Project',         detail.project_name],
+          ['Part Number',     detail.part_number],
+          ['Serial Number',   detail.serial_number],
+          ['Operation No',    detail.operation_number],
+          ['Inspector',       detail.inspector],
+          ...(detail.date ? [['Date', detail.date]] : []),
+          ['Created',         fmtDate(detail.created_at)],
         ].map(([l, v]) => `
           <div class="info-item">
             <span class="info-label">${l}</span>
@@ -360,26 +369,40 @@ async function render(id, root) {
           </div>`).join('')}
         ${detail.notes ? `
           <div class="info-item" style="grid-column:1/-1">
-            <span class="info-label">Notlar</span>
+            <span class="info-label">Notes</span>
             <span class="info-value">${detail.notes}</span>
           </div>` : ''}
       </div>
     </div>
 
+    <!-- Dual-Tab Bar -->
+    <div class="dual-tab-bar">
+      <button class="dual-tab active" data-tab="visual">🔍 Visual</button>
+      <button class="dual-tab" data-tab="dimensional">📐 Dimensional</button>
+    </div>
+
+    <!-- Dimensional Tab -->
+    <div id="tab-dimensional" class="tab-pane" style="display:none">
+      <div id="dimensional-content"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- Visual Tab wrapper start -->
+    <div id="tab-visual" class="tab-pane">
+
     <!-- Hata kayıtları -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Hata Kayıtları (${detail.defects.length})</span>
-        ${pageCanWrite ? '<button class="btn btn-primary btn-sm" id="add-defect-btn">+ Hata Ekle</button>' : ''}
+        <span class="card-title">Defects (${detail.defects.length})</span>
+        ${pageCanWrite ? '<button class="btn btn-primary btn-sm" id="add-defect-btn">+ Add Defect</button>' : ''}
       </div>
       <div class="table-wrapper">
         ${detail.defects.length === 0
           ? '<div class="empty">Kayıtlı hata bulunmuyor.</div>'
           : `<table class="data-table">
               <thead><tr>
-                <th>ID</th><th>Hata Tipi</th><th>Derinlik</th><th>Genişlik</th>
-                <th>Uzunluk</th><th>Yarıçap</th><th>Açı</th><th>Renk</th>
-                <th>Fotoğraflar</th><th>Karar</th><th></th>
+                <th>ID</th><th>Defect Type</th><th>Depth</th><th>Width</th>
+                <th>Length</th><th>Radius</th><th>Angle</th><th>Color</th>
+                <th>Photos</th><th>Decision</th><th></th>
               </tr></thead>
               <tbody>${defectRows}</tbody>
             </table>`}
@@ -405,9 +428,1188 @@ async function render(id, root) {
         ? '<div class="empty">Genel fotoğraf bulunmuyor.</div>'
         : `<div class="photo-grid">${generalPhotos.map(photoCard).join('')}</div>`}
     </div>
+
+    </div><!-- /tab-visual -->
   `;
 
   // ── Event listeners ───────────────────────────────────────────
+
+  // ── Dual-tab switching ─────────────────────────────────────────
+  // ── Dimensional tab state ─────────────────────────────────────
+  let _dimLoaded    = false;
+  let _chars        = [];
+  let _activeIndex  = 0;
+  let _activeDimModalKeyHandler = null;
+  let _docHtml      = null;   // rendered mammoth HTML string
+  let _docRowMap    = {};     // item_no (string) → <tr> element
+
+  // char state map: id → { result: 'ok'|'fail'|null, actual: value }
+  const _charState  = {};
+
+  function _charBadgeHtml(c) {
+    const s = _charState[c.id];
+    if (!s || s.result === null) return '<span class="dim-char-dot dim-dot-pending">●</span>';
+    if (s.result === 'ok')   return '<span class="dim-char-dot dim-dot-ok">✓</span>';
+    return '<span class="dim-char-dot dim-dot-fail">✗</span>';
+  }
+
+  function _isLot(c) {
+    return (c.badge || '').toUpperCase() === 'LOT';
+  }
+
+  function _renderStats() {
+    const total   = _chars.length;
+    const ok      = _chars.filter(c => _charState[c.id]?.result === 'ok').length;
+    const fail    = _chars.filter(c => _charState[c.id]?.result === 'fail').length;
+    const pending = total - ok - fail;
+    const statsEl = root.querySelector('#dim-stats-row');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="irs-stat-card"><div class="irs-stat-value">${total}</div><div class="irs-stat-label">Total</div></div>
+        <div class="irs-stat-card irs-stat-ok"><div class="irs-stat-value">${ok}</div><div class="irs-stat-label">Conform</div></div>
+        <div class="irs-stat-card irs-stat-fail"><div class="irs-stat-value">${fail}</div><div class="irs-stat-label">Not Conform</div></div>
+        <div class="irs-stat-card"><div class="irs-stat-value">${pending}</div><div class="irs-stat-label">Not Entered</div></div>`;
+    }
+  }
+
+  function _renderProgress() {
+    const entered  = _chars.filter(c => _charState[c.id]?.result !== null && _charState[c.id]?.result !== undefined).length;
+    const pct      = _chars.length ? Math.round(entered / _chars.length * 100) : 0;
+    const barEl    = root.querySelector('#dim-progress-bar');
+    const lblEl    = root.querySelector('#dim-progress-label');
+    if (barEl)  barEl.style.width = pct + '%';
+    if (lblEl)  lblEl.textContent = `${entered}/${_chars.length}  (${pct}%)`;
+  }
+
+  function _updateCharListItem(index) {
+    const c   = _chars[index];
+    const li  = root.querySelector(`.dim-char-item[data-index="${index}"]`);
+    if (!li) return;
+    const dotEl = li.querySelector('.dim-char-dot-wrap');
+    if (dotEl) dotEl.innerHTML = _charBadgeHtml(c);
+  }
+
+  function _highlightDocRow(c) {
+    // Remove ONLY the active-highlight class (not the fail highlight)
+    Object.values(_docRowMap).forEach(tr => tr.classList.remove('dim-doc-highlight'));
+    const itemNoKey = String(c.item_no).replace(/\s+/g, '').toUpperCase();
+    const tr = _docRowMap[itemNoKey];
+    if (tr) {
+      tr.classList.add('dim-doc-highlight');
+      tr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  function _updateDocActualCell(c, actualValue, isOk) {
+    const itemNoKey = String(c.item_no).replace(/\s+/g, '').toUpperCase();
+    const tr = _docRowMap[itemNoKey];
+    if (!tr) return;
+
+    // Mark fail rows with permanent yellow highlight
+    if (!isOk) tr.classList.add('dim-doc-fail');
+    else        tr.classList.remove('dim-doc-fail');
+
+    // Find ACTUAL column from the table's FIRST row (mammoth renders no <thead>)
+    const table = tr.closest('table');
+    if (!table) return;
+    const allRows = table.querySelectorAll('tr');
+    if (!allRows.length) return;
+    const headerCells = Array.from(allRows[0].querySelectorAll('td, th'));
+    let actualColIdx = headerCells.findIndex(th => /actual/i.test(th.textContent.trim()));
+    if (actualColIdx < 0) actualColIdx = 2; // fallback: 3rd column is ACTUAL in standard op sheet
+
+    const cells = tr.querySelectorAll('td, th');
+    if (cells[actualColIdx]) {
+      const cell = cells[actualColIdx];
+      const rawStr = String(actualValue);
+      const parts = rawStr.split('/').map(v => v.trim()).filter(Boolean);
+      const hasLimitsC = c && (c.lower_limit !== 0 || c.upper_limit !== 0);
+      if (parts.length > 1 && hasLimitsC) {
+        cell.innerHTML = parts.map(p => {
+          const n = parseFloat(p);
+          const ok = !isNaN(n) && n >= c.lower_limit && n <= c.upper_limit;
+          return `<span class="${ok ? 'val-ok' : 'val-fail'}">${p}</span>`;
+        }).join('<span style="color:var(--text-secondary)"> / </span>');
+      } else {
+        cell.textContent = rawStr;
+        cell.style.color      = isOk ? '#68d391' : '#fc8181';
+        cell.style.fontWeight = '700';
+      }
+      cell.style.background = isOk ? 'rgba(56,161,105,0.35)' : 'rgba(229,62,62,0.35)';
+    }
+  }
+
+  function _activateChar(index) {
+    if (index < 0 || index >= _chars.length) return;
+    _activeIndex = index;
+
+    const c = _chars[index];
+
+    // Highlight list item
+    root.querySelectorAll('.dim-char-item').forEach(li => li.classList.remove('active'));
+    const activeLi = root.querySelector(`.dim-char-item[data-index="${index}"]`);
+    if (activeLi) {
+      activeLi.classList.add('active');
+      activeLi.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    // Update doc highlight
+    _highlightDocRow(c);
+
+    // Update entry panel
+    const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+    const entryEl   = root.querySelector('#dim-entry-panel');
+    if (!entryEl) return;
+
+    const existingVal = _charState[c.id]?.actual ?? '';
+
+    // Detail info rows (shared by LOT and numeric)
+    const detailRows = [
+      c.tooling          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Tooling</span><span class="dim-detail-val">${c.tooling}</span></div>` : '',
+      c.bp_zone          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">B/P Zone</span><span class="dim-detail-val">${c.bp_zone}</span></div>` : '',
+      c.inspection_level ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Insp. Level</span><span class="dim-detail-val">${c.inspection_level}</span></div>` : '',
+      c.remarks          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Remarks</span><span class="dim-detail-val">${c.remarks}</span></div>` : '',
+    ].join('');
+
+    if (_isLot(c)) {
+      entryEl.innerHTML = `
+        <div class="dim-entry-header">
+          <span class="dim-item-no">Item ${String(c.item_no).replace(/\s+/g, '')}</span>
+        </div>
+        <div class="dim-dimension">${c.dimension || '—'}</div>
+        <div class="dim-limits" style="color:var(--text-secondary);font-size:12px;">
+          Categorical check — no numeric measurement required.<br>
+          Inspect visually and confirm conformance.
+        </div>
+        ${detailRows}
+        <div class="dim-lot-btns">
+          <button class="btn btn-primary dim-lot-btn" data-result="Conform">✓ Conform</button>
+          <button class="btn btn-danger  dim-lot-btn" data-result="Not Conform">✗ Not Conform</button>
+        </div>
+        <div class="dim-nav-row">
+          <button class="btn btn-ghost btn-sm" id="dim-prev-btn">◀ Prev</button>
+          <span class="dim-nav-counter">${index + 1} / ${_chars.length}</span>
+          <button class="btn btn-ghost btn-sm" id="dim-next-btn">Next ▶</button>
+          <button class="btn btn-secondary btn-sm" id="dim-open-detail-btn">📋 Detail</button>
+        </div>
+        <div class="dim-progress-wrap">
+          <div class="dim-progress-bar-bg"><div class="dim-progress-bar" id="dim-progress-bar"></div></div>
+          <span class="dim-progress-lbl" id="dim-progress-label"></span>
+        </div>`;
+
+      entryEl.querySelector('#dim-open-detail-btn')?.addEventListener('click', () =>
+        _openDetailModal(_chars[_activeIndex]));
+
+      entryEl.querySelectorAll('.dim-lot-btn').forEach(btn => {
+        btn.addEventListener('click', () => _saveLot(c, btn.dataset.result));
+      });
+    } else {
+      entryEl.innerHTML = `
+        <div class="dim-entry-header">
+          <span class="dim-item-no">Item ${String(c.item_no).replace(/\s+/g, '')}</span>
+          ${c.badge ? `<span class="dim-badge">${c.badge}</span>` : ''}
+        </div>
+        <div class="dim-dimension">${c.dimension || '—'}</div>
+        <div class="dim-limits">
+          ${hasLimits
+            ? `Limits: <span class="dim-limit-val">${formatLimits(c.lower_limit, c.upper_limit)}</span>`
+            : '<span class="text-secondary">No limits defined</span>'}
+        </div>
+        ${detailRows}
+        <div class="dim-input-row">
+          <input type="text" class="form-input dim-actual-input" id="dim-actual-input"
+                 placeholder="Enter measurement…" value="${existingVal}" autocomplete="off" />
+          <span class="dim-tol-preview" id="dim-tol-preview"></span>
+        </div>
+        <div class="dim-nav-row">
+          <button class="btn btn-ghost btn-sm" id="dim-prev-btn">◀ Prev</button>
+          <span class="dim-nav-counter">${index + 1} / ${_chars.length}</span>
+          <button class="btn btn-ghost btn-sm" id="dim-next-btn">Next ▶</button>
+          <button class="btn btn-secondary btn-sm" id="dim-open-detail-btn">📋 Detail</button>
+          <button class="btn btn-warning btn-sm" id="dim-decision-btn">🎯 Karar</button>
+        </div>
+        <div class="dim-progress-wrap">
+          <div class="dim-progress-bar-bg"><div class="dim-progress-bar" id="dim-progress-bar"></div></div>
+          <span class="dim-progress-lbl" id="dim-progress-label"></span>
+        </div>`;
+
+      entryEl.querySelector('#dim-open-detail-btn')?.addEventListener('click', () =>
+        _openDetailModal(_chars[_activeIndex]));
+
+      entryEl.querySelector('#dim-decision-btn')?.addEventListener('click', () =>
+        _openQuickDecisionPanel(c, entryEl));
+
+      const input   = entryEl.querySelector('#dim-actual-input');
+      const preview = entryEl.querySelector('#dim-tol-preview');
+
+      function updatePreview(val) {
+        if (!hasLimits || !val) { preview.textContent = ''; preview.className = 'dim-tol-preview'; return; }
+        const allVals = val.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        if (allVals.length === 0) { preview.textContent = ''; return; }
+        const ok = allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+        if (ok) {
+          preview.textContent = '✓ Within Tolerance';
+          preview.className   = 'dim-tol-preview dim-tol-ok';
+        } else {
+          preview.textContent = '✗ Out of Tolerance';
+          preview.className   = 'dim-tol-preview dim-tol-fail';
+        }
+      }
+
+      updatePreview(String(existingVal));
+
+      input.addEventListener('input', () => updatePreview(input.value));
+      input.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); await _saveNumeric(c, input.value); }
+      });
+      input.focus();
+    }
+
+    // Nav buttons (always rendered)
+    const prevBtn = entryEl.querySelector('#dim-prev-btn');
+    const nextBtn = entryEl.querySelector('#dim-next-btn');
+    if (prevBtn) { prevBtn.disabled = index === 0; prevBtn.addEventListener('click', () => _activateChar(index - 1)); }
+    if (nextBtn) { nextBtn.disabled = index === _chars.length - 1; nextBtn.addEventListener('click', () => _activateChar(index + 1)); }
+
+    _renderProgress();
+  }
+
+  async function _saveNumeric(c, rawVal) {
+    if (!rawVal) return;
+    const allVals = rawVal.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+    if (allVals.length === 0) { window.toast('Invalid measurement', 'error'); return; }
+
+    const min = Math.min(...allVals), max = Math.max(...allVals);
+    const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+    const isOk = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+    const resultStr = allVals.length > 1 ? `${min} / ${max}` : String(allVals[0]);
+
+    try {
+      await api.numericResults.create({ character_id: c.id, actual: rawVal, part_label: null });
+      await api.characters.update(c.id, { inspection_result: resultStr });
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: rawVal };
+      const numCharObj = _chars.find(ch => ch.id === c.id);
+      if (numCharObj) numCharObj.inspection_result = resultStr;
+      _updateCharListItem(_activeIndex);
+      _renderStats();
+      _renderProgress();
+      _updateDocActualCell(c, resultStr, isOk);
+      window.toast('Saved', 'success');
+      if (_activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
+    } catch (err) {
+      window.toast('Save error: ' + err.message, 'error');
+    }
+  }
+
+  async function _saveLot(c, resultStr) {
+    const isOk = resultStr === 'Conform';
+    try {
+      await api.categoricalResults.create({ character_id: c.id, is_confirmed: isOk });
+      await api.characters.update(c.id, { inspection_result: resultStr });
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr };
+      const lotCharObj = _chars.find(ch => ch.id === c.id);
+      if (lotCharObj) lotCharObj.inspection_result = resultStr;
+      _updateCharListItem(_activeIndex);
+      _renderStats();
+      _renderProgress();
+      _updateDocActualCell(c, resultStr, isOk);
+      window.toast('Saved', 'success');
+      if (_activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
+    } catch (err) {
+      window.toast('Save error: ' + err.message, 'error');
+    }
+  }
+
+  async function _openQuickDecisionPanel(c, entryEl) {
+    // Remove existing panel if open
+    entryEl.querySelector('.dim-quick-decision')?.remove();
+
+    // Fetch character's current (latest non-VOID) disposition code
+    let currentDispCode = null;
+    try {
+      const disps = await api.characters.listDispositions(c.id);
+      const active = disps.filter(d => d.decision !== 'VOID').sort((a, b) =>
+        new Date(b.created_at) - new Date(a.created_at))[0];
+      if (active) currentDispCode = active.decision;
+    } catch { /* no dispositions yet */ }
+
+    const types = await _loadDispTypes();
+    const allowed = await allowedNextDecisions(currentDispCode);
+    const options = allowed.length > 0 ? types.filter(t => allowed.includes(t.code)) : types;
+
+    const panel = document.createElement('div');
+    panel.className = 'dim-quick-decision';
+    panel.style.cssText = 'padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary)';
+
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:600';
+    label.textContent = currentDispCode
+      ? `🎯 Karar (Mevcut: ${currentDispCode})`
+      : '🎯 İlk Karar';
+    panel.appendChild(label);
+
+    const sel = document.createElement('select');
+    sel.className = 'form-input';
+    sel.style.cssText = 'width:100%;margin-bottom:8px;color:#1a1a1a;background:#fff';
+    sel.innerHTML = '<option value="">— Seçiniz —</option>' +
+      options.map(t => `<option value="${t.code}">${t.code} — ${t.label ?? ''}</option>`).join('');
+    panel.appendChild(sel);
+
+    const noteInput = document.createElement('input');
+    noteInput.type = 'text';
+    noteInput.className = 'form-input';
+    noteInput.placeholder = 'Not (opsiyonel)…';
+    noteInput.style.cssText = 'width:100%;margin-bottom:8px;';
+    panel.appendChild(noteInput);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:6px';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.className = 'btn btn-primary btn-sm';
+    applyBtn.textContent = 'Uygula';
+    applyBtn.addEventListener('click', async () => {
+      if (!sel.value) { window.toast('Bir disposition seçin', 'error'); return; }
+      try {
+        await api.characters.addDisposition(c.id, { decision: sel.value, note: noteInput.value || '' });
+        window.toast(`${sel.value} kaydedildi`, 'success');
+        panel.remove();
+      } catch (err) {
+        window.toast('Hata: ' + err.message, 'error');
+      }
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-ghost btn-sm';
+    cancelBtn.textContent = 'İptal';
+    cancelBtn.addEventListener('click', () => panel.remove());
+
+    btnRow.appendChild(applyBtn);
+    btnRow.appendChild(cancelBtn);
+    panel.appendChild(btnRow);
+
+    // Insert before progress wrap
+    const progressWrap = entryEl.querySelector('.dim-progress-wrap');
+    entryEl.insertBefore(panel, progressWrap);
+  }
+
+  function _attachZoomPan(el) {
+    let scale = 1, tx = 0, ty = 0;
+    let dragging = false, lastX = 0, lastY = 0;
+    let lastDist = 0;
+
+    el.style.transformOrigin = '0 0';
+    el.style.display = 'inline-block';
+    el.style.minWidth = '100%';
+
+    function apply() {
+      el.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    }
+
+    // Mouse wheel zoom (only when Ctrl is held)
+    el.addEventListener('wheel', e => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      scale = Math.min(4, Math.max(0.3, scale * factor));
+      apply();
+    }, { passive: false });
+
+    // Mouse drag pan
+    el.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; el.style.cursor = 'grabbing'; });
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      tx += e.clientX - lastX; ty += e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY; apply();
+    });
+    window.addEventListener('mouseup', () => { dragging = false; el.style.cursor = 'grab'; });
+
+    // Touch pinch + drag
+    el.addEventListener('touchmove', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                             e.touches[0].clientY - e.touches[1].clientY);
+        if (lastDist) scale = Math.min(4, Math.max(0.3, scale * d / lastDist));
+        lastDist = d; apply();
+      } else if (e.touches.length === 1 && dragging) {
+        tx += e.touches[0].clientX - lastX; ty += e.touches[0].clientY - lastY;
+        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; apply();
+      }
+    }, { passive: false });
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) { dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+      lastDist = 0;
+    });
+    el.addEventListener('touchend', () => { dragging = false; lastDist = 0; });
+
+    // Toolbar zoom buttons (wired after insertion)
+    const zoomIn    = () => { scale = Math.min(4, scale * 1.2); apply(); };
+    const zoomOut   = () => { scale = Math.max(0.3, scale / 1.2); apply(); };
+    const zoomReset = () => { scale = 1; tx = 0; ty = 0; apply(); };
+    document.getElementById('dim-doc-zoom-in-btn')?.addEventListener('click', zoomIn);
+    document.getElementById('dim-doc-zoom-out-btn')?.addEventListener('click', zoomOut);
+    document.getElementById('dim-doc-zoom-reset-btn')?.addEventListener('click', zoomReset);
+  }
+
+  async function _loadDocViewer() {
+    const viewerEl = root.querySelector('#dim-doc-viewer');
+    if (!viewerEl) return;
+
+    // Try to fetch the op sheet docx
+    const docUrl = `/op-sheets/${id}.docx`;
+    try {
+      const resp = await fetch(docUrl);
+      if (!resp.ok) throw new Error('not found');
+      const arrayBuffer = await resp.arrayBuffer();
+      if (typeof mammoth === 'undefined') throw new Error('mammoth not loaded');
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      _docHtml = result.value;
+      viewerEl.innerHTML = `
+        <div class="dim-doc-toolbar" style="display:flex;gap:6px;padding:4px 8px;border-bottom:1px solid var(--border);background:var(--bg-secondary);position:sticky;top:0;z-index:10;">
+          <button id="dim-doc-zoom-in-btn" class="btn btn-ghost btn-xs" title="Zoom In">+</button>
+          <button id="dim-doc-zoom-out-btn" class="btn btn-ghost btn-xs" title="Zoom Out">−</button>
+          <button id="dim-doc-zoom-reset-btn" class="btn btn-ghost btn-xs" title="Reset Zoom">⌂</button>
+          <button id="dim-doc-newtab-btn" class="btn btn-ghost btn-xs" style="margin-left:auto;" title="Open in new tab">↗ Tam Ekran</button>
+        </div>
+        <div class="dim-doc-inner" style="cursor:grab;overflow:visible;">${_docHtml}</div>`;
+
+      document.getElementById('dim-doc-newtab-btn')?.addEventListener('click', () => {
+        try {
+          const blob = new Blob([`<html><body style="margin:0;background:#fff">${_docHtml}</body></html>`],
+                                { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const w = window.open(url, '_blank');
+          if (!w) window.toast('Popup engellendi. Tarayıcı izinlerini kontrol edin.', 'warning');
+        } catch (err) {
+          window.toast('Açılamadı: ' + err.message, 'error');
+        }
+      });
+
+      _attachZoomPan(viewerEl.querySelector('.dim-doc-inner'));
+
+      // Build row map: normalized item_no → <tr> (scan all cells for item-no pattern)
+      _docRowMap = {};
+      viewerEl.querySelectorAll('table tr').forEach(tr => {
+        const cells = tr.querySelectorAll('td, th');
+        cells.forEach(td => {
+          const txt = td.textContent.replace(/\s+/g, '').toUpperCase();
+          if (txt && !_docRowMap[txt]) _docRowMap[txt] = tr;
+        });
+      });
+    } catch {
+      viewerEl.innerHTML = `
+        <div class="dim-doc-empty">
+          <p>No op sheet uploaded for this inspection.</p>
+          ${pageCanWrite ? `
+          <label class="btn btn-ghost btn-sm" for="dim-op-sheet-input" style="margin-top:8px;">
+            📁 Upload Op Sheet (.docx)
+          </label>
+          <input type="file" id="dim-op-sheet-input" class="file-input-hidden" accept=".docx" />` : ''}
+        </div>`;
+      // wire upload if rendered here
+      root.querySelector('#dim-op-sheet-input')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        e.target.value = '';
+        try {
+          const result = await api.inspections.parseOpSheet(id, file);
+          window.toast(`${result.characters_created} characteristics created.`, 'success');
+          _dimLoaded = false;
+          await loadDimensional();
+        } catch (err) {
+          window.toast('Parse error: ' + err.message, 'error');
+        }
+      });
+    }
+  }
+
+  // ── Detail Modal ─────────────────────────────────────────────────────────────
+
+  function _getOrCreateModalOverlay() {
+    let ov = document.getElementById('dim-modal-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'dim-modal-overlay';
+      ov.className = 'dim-modal-overlay hidden';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+
+  function _closeDetailModal() {
+    const ov = document.getElementById('dim-modal-overlay');
+    if (ov) ov.className = 'dim-modal-overlay hidden';
+    if (_activeDimModalKeyHandler) {
+      document.removeEventListener('keydown', _activeDimModalKeyHandler);
+      _activeDimModalKeyHandler = null;
+    }
+  }
+
+  function _buildPartRowsDimensional(c, count, existingResults) {
+    const baseSerial = detail.serial_number || 'Part';
+    let html = '';
+    for (let i = 1; i <= count; i++) {
+      const existing = existingResults[i - 1];
+      const val = existing?.actual ?? '';
+      const label = `${baseSerial}-${i}`;
+      const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+      let statusHtml = '';
+      if (val) {
+        const allVals = val.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        if (allVals.length > 0 && hasLimits) {
+          const ok = allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+          statusHtml = ok
+            ? `<span class="dm-part-status ok">✓ OK</span>`
+            : `<span class="dm-part-status fail">✗ OOT</span>`;
+        }
+      }
+      html += `
+        <div class="dm-part-row" data-part-index="${i}">
+          <span class="dm-part-label" data-part-idx="${i}" title="Double-click to edit label">${label}</span>
+          <input type="text" class="form-input dm-part-input" data-part="${i}"
+                 placeholder="e.g. 15.5 or 15/16" value="${val}" autocomplete="off" />
+          <span class="dm-part-info">${statusHtml}</span>
+        </div>`;
+    }
+    return html;
+  }
+
+  function _buildPartRowsLot(count, existingResults) {
+    const baseSerial = detail.serial_number || 'Part';
+    let html = '';
+    for (let i = 1; i <= count; i++) {
+      const existing = existingResults[i - 1];
+      const isConform = existing ? existing.is_confirmed : true;
+      const info = existing?.additional_info ?? '';
+      const label = `${baseSerial}-${i}`;
+      html += `
+        <div class="dm-part-row" data-part-index="${i}">
+          <span class="dm-part-label">${label}</span>
+          <select class="dm-conform-select" data-part="${i}">
+            <option value="1" ${isConform ? 'selected' : ''}>Conform</option>
+            <option value="0" ${!isConform ? 'selected' : ''}>Not Conform</option>
+          </select>
+          <input type="text" class="form-input dm-part-info" data-part="${i}"
+                 placeholder="Info…" value="${info}" />
+        </div>`;
+    }
+    return html;
+  }
+
+  function _buildZoneRows(existingZones) {
+    if (!existingZones.length) return '';
+    return existingZones.map((z, i) => `
+      <div class="dm-zone-row" data-zone-index="${i}" style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="text" class="form-input dm-zone-name" data-zone="${i}"
+               placeholder="Zone…" value="${z.zone_name || ''}" style="width:80px;" />
+        <input type="text" class="form-input dm-zone-value" data-zone="${i}"
+               placeholder="Measurement…" value="${z.additional_info || ''}" style="width:100px;" />
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+          <input type="checkbox" class="dm-conform-check" data-zone="${i}"
+                 ${z.is_confirmed !== false ? 'checked' : ''}> OK
+        </label>
+      </div>`).join('');
+  }
+
+  async function _openDetailModal(c) {
+    const ov = _getOrCreateModalOverlay();
+    ov.innerHTML = '<div class="dim-modal-card"><div class="dim-modal-body" style="padding:20px;text-align:center;">Loading…</div></div>';
+    ov.className = 'dim-modal-overlay';
+
+    // Close on overlay click
+    ov.addEventListener('click', (e) => { if (e.target === ov) _closeDetailModal(); }, { once: true });
+
+    // Fetch existing results
+    let existingNumeric = [], existingCategorical = [], existingZones = [], existingDispositions = [];
+    try {
+      if (!_isLot(c)) {
+        [existingNumeric, existingZones, existingDispositions] = await Promise.all([
+          api.numericResults.list(c.id),
+          api.zoneResults.list(c.id),
+          api.characters.listDispositions(c.id),
+        ]);
+      } else {
+        [existingCategorical, existingZones] = await Promise.all([
+          api.categoricalResults.list(c.id),
+          api.zoneResults.list(c.id),
+        ]);
+      }
+    } catch { /* use empty arrays */ }
+
+    const partCount = Math.max(1, _isLot(c) ? existingCategorical.length || 1 : existingNumeric.length || 1);
+    const zoneCount = existingZones.length || 0;
+    const noteVal = c.note || '';
+
+    if (!_isLot(c)) {
+      const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+      const limitsHtml = hasLimits
+        ? `<div class="dim-modal-limits">Limits: ${formatLimits(c.lower_limit, c.upper_limit)}</div>`
+        : `<div class="dim-modal-limits" style="color:var(--text-muted)">No limits defined</div>`;
+
+      ov.innerHTML = `
+        <div class="dim-modal-card">
+          <div class="dim-modal-header">
+            <span>Detail — Item ${c.item_no}</span>
+            <button class="dim-modal-close" id="dm-close-btn">✕</button>
+          </div>
+          <div class="dim-modal-body">
+            <div class="dim-modal-info">
+              <div class="dim-modal-dimension">${c.dimension || '—'}</div>
+              ${limitsHtml}
+              <div class="dim-modal-meta-grid">
+                ${c.tooling          ? `<span>Tooling</span><span>${c.tooling}</span>` : ''}
+                ${c.bp_zone          ? `<span>B/P Zone</span><span>${c.bp_zone}</span>` : ''}
+                ${c.inspection_level ? `<span>Insp. Level</span><span>${c.inspection_level}</span>` : ''}
+                ${c.remarks          ? `<span>Remarks</span><span>${c.remarks}</span>` : ''}
+              </div>
+            </div>
+            <div class="dim-modal-section">
+              <span>📦 Parts</span>
+              <button class="dm-count-btn" id="dm-part-dec">−</button>
+              <span class="dm-count-val" id="dm-part-count">${partCount}</span>
+              <button class="dm-count-btn" id="dm-part-inc">+</button>
+            </div>
+            <div id="dm-parts-container">
+              ${_buildPartRowsDimensional(c, partCount, existingNumeric)}
+            </div>
+            <div class="dim-modal-section">
+              <span>📐 Zones</span>
+              <button class="dm-count-btn" id="dm-zone-dec">−</button>
+              <span class="dm-count-val" id="dm-zone-count">${zoneCount}</span>
+              <button class="dm-count-btn" id="dm-zone-inc">+</button>
+            </div>
+            <div id="dm-zones-container">
+              ${_buildZoneRows(existingZones)}
+            </div>
+            <div class="dim-modal-section">
+              <label>📝 Notes</label>
+            </div>
+            <textarea id="dm-notes" rows="2">${noteVal}</textarea>
+            ${(c.inspection_result === 'Not Conform' || c.inspection_result === 'Manual Reject') ? `
+            <div class="dim-modal-section" style="margin-top:10px">
+              <span>⚠️ Disposition</span>
+            </div>
+            <div id="dm-disp-list">
+              ${existingDispositions.length > 0
+                ? existingDispositions.map(d => `<div class="dim-disp-row"><span class="disp-badge">${d.decision}</span><span style="font-size:11px;color:var(--text-secondary);margin-left:6px">${d.entered_by || ''}</span></div>`).join('')
+                : '<p style="color:var(--text-secondary);font-size:12px;margin:4px 0 8px">No disposition yet — required before closing inspection.</p>'}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <select class="form-input" id="dm-disp-decision" style="flex:1"></select>
+              <input class="form-input" id="dm-disp-enteredby" placeholder="By…" style="width:100px" />
+              <button class="btn btn-primary btn-sm" id="dm-disp-add-btn">+ Add</button>
+            </div>` : ''}
+          </div>
+          <div class="dim-modal-footer">
+            <button id="dm-manual-accept" class="btn btn-success">✓ Manual Accept</button>
+            <button id="dm-manual-reject" class="btn btn-danger">✗ Manual Reject</button>
+            <button id="dm-save" class="btn btn-primary">💾 Save</button>
+          </div>
+        </div>`;
+
+      let currentCount = partCount;
+      let currentZoneCount = zoneCount;
+
+      document.getElementById('dm-close-btn').addEventListener('click', _closeDetailModal);
+
+      if (_activeDimModalKeyHandler) {
+        document.removeEventListener('keydown', _activeDimModalKeyHandler);
+        _activeDimModalKeyHandler = null;
+      }
+      function _dimModalKeyHandler(e) {
+        if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+          e.preventDefault();
+          document.getElementById('dm-save')?.click();
+        }
+      }
+      _activeDimModalKeyHandler = _dimModalKeyHandler;
+      document.addEventListener('keydown', _dimModalKeyHandler);
+
+      document.getElementById('dm-part-dec').addEventListener('click', () => {
+        if (currentCount <= 1) return;
+        currentCount--;
+        document.getElementById('dm-part-count').textContent = currentCount;
+        document.getElementById('dm-parts-container').innerHTML =
+          _buildPartRowsDimensional(c, currentCount, _collectDimPartRows());
+      });
+
+      document.getElementById('dm-part-inc').addEventListener('click', () => {
+        currentCount++;
+        document.getElementById('dm-part-count').textContent = currentCount;
+        document.getElementById('dm-parts-container').innerHTML =
+          _buildPartRowsDimensional(c, currentCount, _collectDimPartRows());
+      });
+
+      // Double-click part label to edit inline
+      document.getElementById('dm-parts-container').addEventListener('dblclick', e => {
+        const lbl = e.target.closest('.dm-part-label');
+        if (!lbl) return;
+        const current = lbl.textContent;
+        const inp = document.createElement('input');
+        inp.className = 'form-input dm-part-label-edit';
+        inp.value = current;
+        inp.style.width = '90px';
+        lbl.replaceWith(inp);
+        inp.focus(); inp.select();
+        inp.addEventListener('blur', () => {
+          const span = document.createElement('span');
+          span.className = 'dm-part-label';
+          span.textContent = inp.value.trim() || current;
+          span.title = 'Double-click to edit label';
+          inp.replaceWith(span);
+        });
+        inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') inp.blur(); });
+      });
+
+      document.getElementById('dm-zone-dec').addEventListener('click', () => {
+        if (currentZoneCount <= 0) return;
+        currentZoneCount--;
+        document.getElementById('dm-zone-count').textContent = currentZoneCount;
+        const collected = _collectZoneRows();
+        collected.splice(currentZoneCount);
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+      });
+      document.getElementById('dm-zone-inc').addEventListener('click', () => {
+        currentZoneCount++;
+        document.getElementById('dm-zone-count').textContent = currentZoneCount;
+        const collected = _collectZoneRows();
+        while (collected.length < currentZoneCount)
+          collected.push({ zone_name: '', is_confirmed: true, additional_info: '' });
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+      });
+
+      document.getElementById('dm-manual-accept').addEventListener('click', () =>
+        _saveModalDimensional(c, 'Manual Accept'));
+      document.getElementById('dm-manual-reject').addEventListener('click', () =>
+        _saveModalDimensional(c, 'Manual Reject'));
+      document.getElementById('dm-save').addEventListener('click', () =>
+        _saveModalDimensional(c, null));
+
+      // Disposition section (only for Not Conform / Manual Reject)
+      const dispSel = document.getElementById('dm-disp-decision');
+      if (dispSel) {
+        _loadDispTypes().then(async types => {
+          const lastActive = existingDispositions.find(d => d.decision !== 'VOID');
+          const allowed = await allowedNextDecisions(lastActive?.decision ?? null);
+          const options = allowed.length > 0 ? types.filter(t => allowed.includes(t.code)) : types;
+          dispSel.innerHTML = options.map(t =>
+            `<option value="${t.code}">${t.label || t.code}</option>`).join('');
+        });
+
+        document.getElementById('dm-disp-add-btn')?.addEventListener('click', async () => {
+          const decision   = dispSel.value;
+          const enteredBy  = document.getElementById('dm-disp-enteredby')?.value?.trim() || 'Inspector';
+          if (!decision) return;
+          try {
+            await api.characters.addDisposition(c.id, { decision, entered_by: enteredBy });
+            window.toast('Disposition added', 'success');
+            _closeDetailModal();
+            await _openDetailModal(c);
+          } catch (err) {
+            window.toast('Error: ' + err.message, 'error');
+          }
+        });
+      }
+
+    } else {
+      // LOT modal
+      ov.innerHTML = `
+        <div class="dim-modal-card">
+          <div class="dim-modal-header">
+            <span>Detail — Item ${c.item_no}</span>
+            <button class="dim-modal-close" id="dm-close-btn">✕</button>
+          </div>
+          <div class="dim-modal-body">
+            <div class="dim-modal-info">
+              <div class="dim-modal-dimension">${c.dimension || '—'}</div>
+              <div class="dim-modal-limits" style="color:var(--text-muted);font-size:.9rem;">
+                Categorical check — confirm conformance per part.
+              </div>
+              <div class="dim-modal-meta-grid">
+                ${c.tooling          ? `<span>Tooling</span><span>${c.tooling}</span>` : ''}
+                ${c.bp_zone          ? `<span>B/P Zone</span><span>${c.bp_zone}</span>` : ''}
+                ${c.inspection_level ? `<span>Insp. Level</span><span>${c.inspection_level}</span>` : ''}
+                ${c.remarks          ? `<span>Remarks</span><span>${c.remarks}</span>` : ''}
+              </div>
+            </div>
+            <div class="dim-modal-section">
+              <span>📦 Parts</span>
+              <button class="dm-count-btn" id="dm-part-dec">−</button>
+              <span class="dm-count-val" id="dm-part-count">${partCount}</span>
+              <button class="dm-count-btn" id="dm-part-inc">+</button>
+            </div>
+            <div id="dm-parts-container">
+              ${_buildPartRowsLot(partCount, existingCategorical)}
+            </div>
+            ${zoneCount > 0 ? `
+            <div class="dim-modal-section">
+              <span>🗺 Zones</span>
+              <button class="dm-count-btn" id="dm-zone-dec">−</button>
+              <span class="dm-count-val" id="dm-zone-count">${zoneCount}</span>
+              <button class="dm-count-btn" id="dm-zone-inc">+</button>
+            </div>
+            <div id="dm-zones-container">
+              ${_buildZoneRows(existingZones)}
+            </div>` : `
+            <div class="dim-modal-section">
+              <span>🗺 Zones</span>
+              <button class="dm-count-btn" id="dm-zone-dec">−</button>
+              <span class="dm-count-val" id="dm-zone-count">${zoneCount}</span>
+              <button class="dm-count-btn" id="dm-zone-inc">+</button>
+            </div>
+            <div id="dm-zones-container"></div>`}
+            <div class="dim-modal-section">
+              <label>📝 Notes</label>
+            </div>
+            <textarea id="dm-notes" rows="2">${noteVal}</textarea>
+          </div>
+          <div class="dim-modal-footer">
+            <button id="dm-save" class="btn btn-primary">💾 Save</button>
+          </div>
+        </div>`;
+
+      let currentPartCount = partCount;
+      let currentZoneCount = zoneCount;
+
+      document.getElementById('dm-close-btn').addEventListener('click', _closeDetailModal);
+
+      document.getElementById('dm-part-dec').addEventListener('click', () => {
+        if (currentPartCount <= 1) return;
+        currentPartCount--;
+        document.getElementById('dm-part-count').textContent = currentPartCount;
+        document.getElementById('dm-parts-container').innerHTML =
+          _buildPartRowsLot(currentPartCount, _collectLotPartRows());
+      });
+      document.getElementById('dm-part-inc').addEventListener('click', () => {
+        currentPartCount++;
+        document.getElementById('dm-part-count').textContent = currentPartCount;
+        document.getElementById('dm-parts-container').innerHTML =
+          _buildPartRowsLot(currentPartCount, _collectLotPartRows());
+      });
+      document.getElementById('dm-zone-dec').addEventListener('click', () => {
+        if (currentZoneCount <= 0) return;
+        currentZoneCount--;
+        document.getElementById('dm-zone-count').textContent = currentZoneCount;
+        const collected = _collectZoneRows();
+        collected.splice(currentZoneCount);
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+      });
+      document.getElementById('dm-zone-inc').addEventListener('click', () => {
+        currentZoneCount++;
+        document.getElementById('dm-zone-count').textContent = currentZoneCount;
+        const collected = _collectZoneRows();
+        while (collected.length < currentZoneCount)
+          collected.push({ zone_name: '', is_confirmed: true, additional_info: '' });
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+      });
+
+      document.getElementById('dm-save').addEventListener('click', () => _saveModalLot(c));
+    }
+  }
+
+  function _collectDimPartRows() {
+    return Array.from(document.querySelectorAll('#dm-parts-container .dm-part-row')).map(row => ({
+      actual: row.querySelector('.dm-part-input')?.value ?? '',
+      part_label: (row.querySelector('.dm-part-label')?.textContent
+                ?? row.querySelector('.dm-part-label-edit')?.value
+                ?? '').trim(),
+    }));
+  }
+
+  function _collectLotPartRows() {
+    return Array.from(document.querySelectorAll('#dm-parts-container .dm-part-row')).map(row => ({
+      is_confirmed: row.querySelector('.dm-conform-select')?.value === '1',
+      additional_info: row.querySelector('.dm-part-info')?.value ?? '',
+    }));
+  }
+
+  function _collectZoneRows() {
+    return Array.from(document.querySelectorAll('#dm-zones-container .dm-zone-row')).map(row => ({
+      zone_name:      row.querySelector('.dm-zone-name')?.value ?? '',
+      is_confirmed:   row.querySelector('.dm-conform-check')?.checked ?? true,
+      additional_info: row.querySelector('.dm-zone-value')?.value ?? '',
+    }));
+  }
+
+  async function _saveModalDimensional(c, overrideResult) {
+    const parts = _collectDimPartRows();
+    if (parts.some(p => !p.actual.trim())) {
+      window.toast('Please fill all part measurements', 'error'); return;
+    }
+    const noteVal = document.getElementById('dm-notes')?.value ?? '';
+
+    // Always compute the real actual value string (used for doc cell display)
+    const allVals = parts.flatMap(p =>
+      p.actual.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
+    );
+    const actualStr = allVals.length > 0
+      ? (Math.min(...allVals) === Math.max(...allVals)
+          ? String(allVals[0])
+          : allVals.join(' / '))
+      : parts.map(p => p.actual.trim()).join(' / ');
+
+    let resultStr, isOk;
+    if (overrideResult) {
+      resultStr = overrideResult;
+      isOk = overrideResult === 'Manual Accept';
+    } else {
+      if (allVals.length === 0) { window.toast('Invalid measurement values', 'error'); return; }
+      const min = Math.min(...allVals), max = Math.max(...allVals);
+      resultStr = min === max ? String(min) : `${min} / ${max}`;
+      const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+      isOk = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+    }
+
+    try {
+      const zones = _collectZoneRows();
+      await api.numericResults.deleteByCharacter(c.id);
+      await api.zoneResults.deleteByCharacter(c.id);
+      const baseSerial = detail.serial_number || 'Part';
+      for (let i = 0; i < parts.length; i++) {
+        await api.numericResults.create({
+          character_id: c.id,
+          actual: parts[i].actual,
+          part_label: parts[i].part_label || `${baseSerial}-${i + 1}`,
+        });
+      }
+      for (const z of zones) {
+        if (!z.zone_name.trim()) continue;
+        await api.zoneResults.create({
+          character_id: c.id,
+          zone_name: z.zone_name,
+          is_confirmed: z.is_confirmed,
+          additional_info: z.additional_info || null,
+        });
+      }
+      const updatePayload = { inspection_result: resultStr };
+      if (noteVal) updatePayload.note = noteVal;
+      await api.characters.update(c.id, updatePayload);
+
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: actualStr };
+      // Update local chars array
+      const charObj = _chars.find(ch => ch.id === c.id);
+      if (charObj) { charObj.note = noteVal; charObj.inspection_result = resultStr; }
+
+      _updateCharListItem(_activeIndex);
+      _renderStats();
+      _renderProgress();
+      _updateDocActualCell(c, actualStr, isOk);
+      _closeDetailModal();
+      window.toast('Saved', 'success');
+    } catch (err) {
+      window.toast('Save error: ' + err.message, 'error');
+    }
+  }
+
+  async function _saveModalLot(c) {
+    const parts = _collectLotPartRows();
+    const zones = _collectZoneRows();
+    const noteVal = document.getElementById('dm-notes')?.value ?? '';
+
+    const hasNonConform = parts.some(p => !p.is_confirmed) || zones.some(z => !z.is_confirmed);
+    const resultStr = hasNonConform ? 'Not Conform' : 'Conform';
+
+    try {
+      await api.categoricalResults.deleteByCharacter(c.id);
+      await api.zoneResults.deleteByCharacter(c.id);
+
+      for (const p of parts) {
+        await api.categoricalResults.create({
+          character_id: c.id,
+          is_confirmed: p.is_confirmed,
+          additional_info: p.additional_info || null,
+          index: null,
+        });
+      }
+      for (const z of zones) {
+        if (!z.zone_name.trim()) continue;
+        await api.zoneResults.create({
+          character_id: c.id,
+          zone_name: z.zone_name,
+          is_confirmed: z.is_confirmed,
+          additional_info: z.additional_info || null,
+        });
+      }
+      const updatePayload = { inspection_result: resultStr };
+      if (noteVal) updatePayload.note = noteVal;
+      await api.characters.update(c.id, updatePayload);
+
+      const isOk = !hasNonConform;
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr };
+      const charObj = _chars.find(ch => ch.id === c.id);
+      if (charObj) { charObj.note = noteVal; charObj.inspection_result = resultStr; }
+
+      _updateCharListItem(_activeIndex);
+      _renderStats();
+      _renderProgress();
+      _updateDocActualCell(c, resultStr, isOk);
+      _closeDetailModal();
+      window.toast('Saved', 'success');
+    } catch (err) {
+      window.toast('Save error: ' + err.message, 'error');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async function loadDimensional() {
+    if (_dimLoaded) return;
+    _dimLoaded = true;
+    const container = root.querySelector('#dimensional-content');
+    try {
+      const chars = await api.characters.list({ inspection_id: id });
+      _chars = chars;
+
+      // Pre-populate _charState from existing results
+      for (const c of chars) {
+        const r = c.inspection_result;
+        if (!r || r === 'Unidentified') {
+          _charState[c.id] = { result: null, actual: '' };
+        } else if (r === 'Manual Accept' || r === 'Conform') {
+          _charState[c.id] = { result: 'ok', actual: r };
+        } else if (r === 'Manual Reject' || r === 'Not Conform') {
+          _charState[c.id] = { result: 'fail', actual: r };
+        } else {
+          // min/max result like "17.16 / 17.88" — parse to determine ok/fail
+          const allVals = r.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+          if (allVals.length > 0) {
+            const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+            const ok = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+            _charState[c.id] = { result: ok ? 'ok' : 'fail', actual: r };
+          } else {
+            _charState[c.id] = { result: null, actual: '' };
+          }
+        }
+      }
+
+      if (chars.length === 0) {
+        container.innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Dimensional Characteristics</span>
+              ${pageCanWrite ? `
+              <label class="btn btn-ghost btn-sm" for="dim-op-sheet-input">📁 Upload Op Sheet (.docx)</label>
+              <input type="file" id="dim-op-sheet-input" class="file-input-hidden" accept=".docx" />` : ''}
+            </div>
+            <div class="empty">No op sheet uploaded — no characteristics found.</div>
+          </div>`;
+        root.querySelector('#dim-op-sheet-input')?.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          e.target.value = '';
+          try {
+            const result = await api.inspections.parseOpSheet(id, file);
+            window.toast(`${result.characters_created} characteristics created.`, 'success');
+            _dimLoaded = false;
+            await loadDimensional();
+          } catch (err) {
+            window.toast('Parse error: ' + err.message, 'error');
+          }
+        });
+        return;
+      }
+
+      // Build char list HTML
+      const charListItems = chars.map((c, i) => `
+        <div class="dim-char-item" data-index="${i}" data-id="${c.id}">
+          <span class="dim-char-dot-wrap">${_charBadgeHtml(c)}</span>
+          <span class="dim-char-text">
+            <span class="dim-char-no">${String(c.item_no).replace(/\s+/g, '')}</span>
+            <span class="dim-char-dim">${c.dimension || ''}</span>
+          </span>
+          <button class="btn btn-ghost btn-xs dim-char-disp-btn" data-index="${i}"
+                  title="Disposition ekle" style="margin-left:auto;flex-shrink:0;">⚖</button>
+        </div>`).join('');
+
+      container.innerHTML = `
+        <div class="card" style="padding:0">
+          <div class="card-header" style="padding:10px 16px">
+            <span class="card-title">Dimensional Characteristics</span>
+            ${pageCanWrite ? `
+            <label class="btn btn-ghost btn-sm" for="dim-op-sheet-input-top">📁 Upload Op Sheet</label>
+            <input type="file" id="dim-op-sheet-input-top" class="file-input-hidden" accept=".docx" />` : ''}
+          </div>
+          <div class="irs-stats-row" id="dim-stats-row" style="padding:8px 16px;border-bottom:1px solid var(--border)"></div>
+          <div class="dim-split">
+            <div class="dim-char-list">${charListItems}</div>
+            <div class="dim-entry-panel" id="dim-entry-panel">
+              <div class="dim-entry-placeholder">Select a characteristic to begin measurement.</div>
+            </div>
+            <div class="dim-doc-viewer" id="dim-doc-viewer">
+              <div class="loading">Loading op sheet…</div>
+            </div>
+          </div>
+        </div>`;
+
+      _renderStats();
+
+      // Char list click — activate in center panel only (use Detail button to open modal)
+      root.querySelectorAll('.dim-char-item').forEach(li => {
+        li.addEventListener('click', (e) => {
+          if (e.target.closest('.dim-char-disp-btn')) return;
+          _activateChar(Number(li.dataset.index));
+        });
+      });
+
+      // Disposition button — open detail modal directly
+      root.querySelectorAll('.dim-char-disp-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          _openDetailModal(_chars[Number(btn.dataset.index)]);
+        });
+      });
+
+      // Op sheet upload from top button
+      root.querySelector('#dim-op-sheet-input-top')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        e.target.value = '';
+        try {
+          const result = await api.inspections.parseOpSheet(id, file);
+          window.toast(`${result.characters_created} characteristics created.`, 'success');
+          _dimLoaded = false;
+          await loadDimensional();
+        } catch (err) {
+          window.toast('Parse error: ' + err.message, 'error');
+        }
+      });
+
+      // Keyboard navigation (ArrowLeft/Right) + Esc to close modal
+      document.addEventListener('keydown', function _dimKeyNav(e) {
+        if (!root.isConnected) { document.removeEventListener('keydown', _dimKeyNav); return; }
+        if (e.key === 'Escape') { _closeDetailModal(); return; }
+        const modalOpen = document.getElementById('dim-modal-overlay')
+          && !document.getElementById('dim-modal-overlay').classList.contains('hidden');
+        if (modalOpen) return;
+        if (e.key === 'ArrowRight' && _activeIndex < _chars.length - 1) { e.preventDefault(); _activateChar(_activeIndex + 1); }
+        if (e.key === 'ArrowLeft'  && _activeIndex > 0)                  { e.preventDefault(); _activateChar(_activeIndex - 1); }
+      });
+
+      // Activate first char + load doc viewer in parallel
+      _activateChar(0);
+      await _loadDocViewer();
+      // Re-highlight after doc loaded
+      if (_chars.length > 0) _highlightDocRow(_chars[_activeIndex]);
+
+    } catch (err) {
+      container.innerHTML = `<div class="empty text-danger">Load error: ${err.message}</div>`;
+      _dimLoaded = false;
+    }
+  }
+
+  root.querySelectorAll('.dual-tab').forEach(tab => {
+    tab.addEventListener('click', async () => {
+      root.querySelectorAll('.dual-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const pane = tab.dataset.tab;
+      root.querySelector('#tab-visual').style.display      = pane === 'visual'      ? '' : 'none';
+      root.querySelector('#tab-dimensional').style.display = pane === 'dimensional' ? '' : 'none';
+      if (pane === 'dimensional') await loadDimensional();
+    });
+  });
+
+  // Op sheet upload handled inside loadDimensional() per-render
 
   // Rapor dropdown
   const reportDropBtn  = root.querySelector('#report-dropdown-btn');
@@ -417,9 +1619,6 @@ async function render(id, root) {
     reportDropMenu.classList.toggle('open');
   });
   document.addEventListener('click', () => reportDropMenu.classList.remove('open'), { once: false });
-  root.querySelector('#report-portrait-btn').addEventListener('click', () => {
-    window.open(`/report.html?id=${id}&type=portrait`, '_blank');
-  });
   root.querySelector('#report-landscape-btn').addEventListener('click', () => {
     window.open(`/report.html?id=${id}&type=landscape`, '_blank');
   });
@@ -442,17 +1641,17 @@ async function render(id, root) {
     }
     try {
       await api.inspections.update(id, { status: newStatus });
-      window.toast('Durum güncellendi.', 'success');
+      window.toast('Status updated.', 'success');
       await render(id, root);
     } catch (err) { window.toast('Hata: ' + err.message, 'error'); }
   });
 
   // Muayene sil
   root.querySelector('#delete-insp-btn')?.addEventListener('click', async () => {
-    if (!confirm(`Muayene #${id} silinecek. Emin misiniz?`)) return;
+    if (!confirm(`Are you sure you want to delete inspection #${id}?`)) return;
     try {
       await api.inspections.delete(id);
-      window.toast('Muayene silindi.', 'success');
+      window.toast('Inspection deleted.', 'success');
       window.navigate('/inspections');
     } catch (err) { window.toast('Silme hatası: ' + err.message, 'error'); }
   });
@@ -988,7 +2187,7 @@ async function openDispositionModal(defect, onDone) {
         <!-- RE_INSPECT alanları -->
         <div id="dp-fields-RE_INSPECT" class="dp-extra-fields" style="display:none;">
           <p class="text-secondary" style="font-size:12px;padding:4px 0;">
-            Parça yeniden incelemeye alındı. Muayene sonucuna göre karar girilecek.
+            Part sent for re-inspection. Decision will be entered based on inspection result.
           </p>
         </div>
 
@@ -1173,7 +2372,7 @@ function openDefectModal(inspectionId, existingDefect, defectTypes, onDone, orig
   window.modal.open(`
     <div class="modal-card">
       <div class="modal-header">
-        <span class="modal-title">${isEdit ? `Hata Düzenle #${v.id}` : 'Yeni Hata Ekle'}</span>
+        <span class="modal-title">${isEdit ? `Edit Defect #${v.id}` : 'Add Defect'}</span>
         <button class="modal-close" id="df-close">&times;</button>
       </div>
       ${postRework ? `

@@ -1,5 +1,6 @@
 using IRSGenerator.API.Extensions;
 using IRSGenerator.Core.Repositories;
+using IRSGenerator.Core.Services;
 using IRSGenerator.Data.Repositories;
 using System.Text.Json;
 
@@ -29,7 +30,12 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDispositionTypeRepository, DispositionTypeRepository>();
 builder.Services.AddScoped<IDispositionTransitionRepository, DispositionTransitionRepository>();
 
+// IRSGenerator word services
+builder.Services.AddScoped<WordOpSheetParser>();
+builder.Services.AddScoped<WordReportWriter>();
+
 // IRSGenerator core repository kayıtları
+builder.Services.AddScoped<IIRSProjectRepository, IRSProjectRepository>();
 builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
 builder.Services.AddScoped<INumericPartResultRepository, NumericPartResultRepository>();
 builder.Services.AddScoped<ICategoricalPartResultRepository, CategoricalPartResultRepository>();

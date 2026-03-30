@@ -17,19 +17,19 @@ export async function inspectionFormPage(id) {
   ]);
 
   if (isEdit && !inspection) {
-    root.innerHTML = '<div class="empty text-danger">Muayene bulunamadı.</div>';
+    root.innerHTML = '<div class="empty text-danger">Inspection not found.</div>';
     return;
   }
 
   const v = inspection || {};
-  const title = isEdit ? `Muayene Düzenle #${id}` : 'Yeni Muayene';
+  const title = isEdit ? `Edit Inspection #${id}` : 'New Inspection';
 
   const projectOptions = projects.map((p) =>
     `<option value="${p.id}" ${v.project_id == p.id ? 'selected' : ''}>${p.name}</option>`
   ).join('');
 
   const statusOptions = ['open', 'completed', 'rejected'].map((s) => {
-    const labels = { open: 'Açık', completed: 'Tamamlandı', rejected: 'Reddedildi' };
+    const labels = { open: 'Open', completed: 'Completed', rejected: 'Rejected' };
     return `<option value="${s}" ${v.status === s ? 'selected' : ''}>${labels[s]}</option>`;
   }).join('');
 
@@ -44,48 +44,55 @@ export async function inspectionFormPage(id) {
       <form id="insp-form" novalidate>
         <div class="form-grid">
           <div class="form-group">
-            <label for="project_id">Proje</label>
+            <label for="project_id">Engine Project</label>
             <select class="form-select" id="project_id" name="project_id">
-              <option value="">— Seçiniz —</option>
+              <option value="">— Select —</option>
               ${projectOptions}
             </select>
           </div>
 
           <div class="form-group">
-            <label for="part_number">Parça Numarası</label>
+            <label for="part_number">Part Number</label>
             <input type="text" class="form-input" id="part_number" name="part_number"
-              value="${v.part_number || ''}" placeholder="ÖRN: PN-12345" />
+              value="${v.part_number || ''}" placeholder="e.g. PN-12345" />
           </div>
 
           <div class="form-group">
-            <label for="serial_number">Seri Numarası</label>
+            <label for="serial_number">Serial Number</label>
             <input type="text" class="form-input" id="serial_number" name="serial_number"
-              value="${v.serial_number || ''}" placeholder="ÖRN: SN-00987" />
+              value="${v.serial_number || ''}" placeholder="e.g. SN-00987" />
           </div>
 
           <div class="form-group">
-            <label for="operation_number">Operasyon Numarası</label>
+            <label for="operation_number">Operation Number</label>
             <input type="text" class="form-input" id="operation_number" name="operation_number"
-              value="${v.operation_number || ''}" placeholder="ÖRN: OP-010" />
+              value="${v.operation_number || ''}" placeholder="e.g. OP-010" />
           </div>
 
           <div class="form-group">
-            <label for="inspector">Muayeneci</label>
+            <label for="inspector">Inspector</label>
             <input type="text" class="form-input" id="inspector" name="inspector"
-              value="${v.inspector || (!isEdit ? session.getName() : '')}" placeholder="Ad Soyad" />
+              value="${v.inspector || (!isEdit ? session.getName() : '')}" placeholder="Full name" />
           </div>
 
           <div class="form-group">
-            <label for="status">Durum</label>
+            <label for="status">Status</label>
             <select class="form-select" id="status" name="status">
               ${statusOptions}
             </select>
           </div>
 
+          ${!isEdit ? `
+          <div class="form-group">
+            <label for="op_sheet_file">Op Sheet (.docx) — If Dimensional Measurement Will Be Done</label>
+            <input type="file" class="form-input" id="op_sheet_file" accept=".docx" />
+            <small class="form-hint">When uploaded, dimensional characteristics are parsed automatically.</small>
+          </div>` : ''}
+
           <div class="form-group-full form-group">
-            <label for="notes">Notlar</label>
+            <label for="notes">Notes</label>
             <textarea class="form-textarea" id="notes" name="notes" rows="4"
-              placeholder="Muayene ile ilgili notlar...">${v.notes || ''}</textarea>
+              placeholder="Inspection notes...">${v.notes || ''}</textarea>
           </div>
         </div>
 
@@ -121,11 +128,25 @@ export async function inspectionFormPage(id) {
     try {
       if (isEdit) {
         await api.inspections.update(id, data);
-        window.toast('Muayene güncellendi.', 'success');
+        window.toast('Inspection updated.', 'success');
         window.navigate(`/inspections/${id}`);
       } else {
         const created = await api.inspections.create(data);
-        window.toast('Muayene oluşturuldu.', 'success');
+
+        // Upload op sheet if provided
+        const opSheetInput = document.getElementById('op_sheet_file');
+        if (opSheetInput && opSheetInput.files.length > 0) {
+          try {
+            submitBtn.textContent = 'Op Sheet parse ediliyor...';
+            const result = await api.inspections.parseOpSheet(created.id, opSheetInput.files[0]);
+            window.toast(`Inspection created. ${result.characters_created} characteristics parsed.`, 'success');
+          } catch (parseErr) {
+            window.toast(`Muayene oluşturuldu, ancak op sheet parse hatası: ${parseErr.message}`, 'warning');
+          }
+        } else {
+          window.toast('Inspection created.', 'success');
+        }
+
         window.navigate(`/inspections/${created.id}`);
       }
     } catch (err) {

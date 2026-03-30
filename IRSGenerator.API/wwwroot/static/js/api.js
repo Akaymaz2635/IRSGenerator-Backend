@@ -70,7 +70,7 @@ async function request(method, path, body = null, isFormData = false) {
     if (isWrite) _writeEnded(true);
     return data;
   } catch (e) {
-    if (isWrite && !(e instanceof Error && e.message.startsWith('HTTP'))) {
+    if (isWrite && e instanceof TypeError) {
       _writeEnded(false, 'Sunucuya ulaşılamadı');
     }
     throw e;
@@ -141,6 +141,13 @@ export const api = {
     create: (data) => request('POST', '/api/inspections', data),
     update: (id, data) => request('PUT', `/api/inspections/${id}`, data),
     delete: (id)   => request('DELETE', `/api/inspections/${id}`),
+    parseOpSheet: (id, file) => {
+      const fd = new FormData();
+      fd.append('file', file, file.name || 'op-sheet.docx');
+      return request('POST', `/api/inspections/${id}/parse-op-sheet`, fd, true);
+    },
+    reportUrl: (id) => `${BASE_URL}/api/inspections/${id}/report`,
+    combinedReportUrl: (id) => `${BASE_URL}/api/inspections/${id}/report?type=full`,
   },
 
   defects: {
@@ -176,6 +183,50 @@ export const api = {
     },
     bulkSet: (from_code, to_codes) =>
       request('POST', '/api/disposition-transitions/bulk-set', { from_code, to_codes }),
+  },
+
+  irsProjects: {
+    list:   ()         => request('GET',    '/api/irs-projects'),
+    get:    (id)       => request('GET',    `/api/irs-projects/${id}`),
+    create: (data)     => request('POST',   '/api/irs-projects', data),
+    update: (id, data) => request('PUT',    `/api/irs-projects/${id}`, data),
+    delete: (id)       => request('DELETE', `/api/irs-projects/${id}`),
+  },
+
+  characters: {
+    list: (params = {}) => {
+      const qs = new URLSearchParams();
+      if (params.irs_project_id != null) qs.set('irs_project_id', String(params.irs_project_id));
+      if (params.inspection_id  != null) qs.set('inspection_id',  String(params.inspection_id));
+      return request('GET', `/api/characters${qs.toString() ? '?' + qs.toString() : ''}`);
+    },
+    get:    (id)             => request('GET',    `/api/characters/${id}`),
+    create: (data)           => request('POST',   '/api/characters', data),
+    update: (id, data)       => request('PUT',    `/api/characters/${id}`, data),
+    delete: (id)             => request('DELETE', `/api/characters/${id}`),
+    listDispositions: (id)   => request('GET',    `/api/characters/${id}/dispositions`),
+    addDisposition:   (id, data) => request('POST', `/api/characters/${id}/dispositions`, data),
+  },
+
+  numericResults: {
+    list:              (character_id) => request('GET',    `/api/numeric-part-results?character_id=${character_id}`),
+    create:            (data)         => request('POST',   '/api/numeric-part-results', data),
+    delete:            (id)           => request('DELETE', `/api/numeric-part-results/${id}`),
+    deleteByCharacter: (character_id) => request('DELETE', `/api/numeric-part-results?character_id=${character_id}`),
+  },
+
+  categoricalResults: {
+    list:              (character_id) => request('GET',    `/api/categorical-part-results?character_id=${character_id}`),
+    create:            (data)         => request('POST',   '/api/categorical-part-results', data),
+    delete:            (id)           => request('DELETE', `/api/categorical-part-results/${id}`),
+    deleteByCharacter: (character_id) => request('DELETE', `/api/categorical-part-results?character_id=${character_id}`),
+  },
+
+  zoneResults: {
+    list:              (character_id) => request('GET',    `/api/categorical-zone-results?character_id=${character_id}`),
+    create:            (data)         => request('POST',   '/api/categorical-zone-results', data),
+    delete:            (id)           => request('DELETE', `/api/categorical-zone-results/${id}`),
+    deleteByCharacter: (character_id) => request('DELETE', `/api/categorical-zone-results?character_id=${character_id}`),
   },
 
   photos: {

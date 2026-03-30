@@ -12,4 +12,21 @@ public class CharacterRepository : BaseRepository<Character>, ICharacterReposito
         => await Context.Characters
             .Where(c => c.IRSProjectId == projectId)
             .ToListAsync();
+
+    public async Task<IEnumerable<Character>> GetByInspectionIdAsync(long inspectionId)
+        => await Context.Characters
+            .Include(c => c.NumericPartResults)
+            .Include(c => c.CategoricalPartResults)
+            .Include(c => c.CategoricalZoneResults)
+            .Include(c => c.Dispositions)
+            .Where(c => c.InspectionId == inspectionId)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
+
+    public async Task<IEnumerable<Character>> GetByInspectionIdWithDispositionsAsync(long inspectionId)
+        => await Context.Characters
+            .Include(c => c.Dispositions)
+            .Where(c => c.InspectionId == inspectionId)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
 }

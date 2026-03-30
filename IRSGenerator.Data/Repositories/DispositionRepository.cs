@@ -25,4 +25,10 @@ public class DispositionRepository : BaseRepository<Disposition>, IDispositionRe
             .Where(d => d.DefectId == defectId)
             .OrderByDescending(d => d.CreatedAt)
             .FirstOrDefaultAsync();
+
+    public async Task<IEnumerable<Disposition>> GetByCharacterIdAsync(long characterId)
+        => await Context.Set<Disposition>()
+            .Where(d => d.CharacterId == characterId)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
 }

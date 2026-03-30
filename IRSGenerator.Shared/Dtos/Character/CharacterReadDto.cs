@@ -13,7 +13,9 @@ public class CharacterReadDto
     public double LowerLimit { get; set; }
     public double UpperLimit { get; set; }
     public string InspectionResult { get; set; } = "Unidentified";
-    public long IRSProjectId { get; set; }
+    public string? Note { get; set; }
+    public long? IRSProjectId { get; set; }
+    public long? InspectionId { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

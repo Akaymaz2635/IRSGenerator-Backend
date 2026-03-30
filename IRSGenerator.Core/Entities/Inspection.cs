@@ -18,6 +18,7 @@ namespace IRSGenerator.Core.Entities
 
         public string Status { get; set; } = "open";
         public string? Notes { get; set; }
+        public string? OpSheetPath { get; set; }
 
         // Navigation
         public IRSProject? IrsProject { get; set; }

@@ -10,10 +10,12 @@ namespace IRSGenerator.API.Controllers;
 public class DispositionsController : ControllerBase
 {
     private readonly IDispositionRepository _repo;
+    private readonly IDispositionTypeRepository _typeRepo;
 
-    public DispositionsController(IDispositionRepository repo)
+    public DispositionsController(IDispositionRepository repo, IDispositionTypeRepository typeRepo)
     {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+        _repo     = repo     ?? throw new ArgumentNullException(nameof(repo));
+        _typeRepo = typeRepo ?? throw new ArgumentNullException(nameof(typeRepo));
     }
 
     [HttpGet("{id:long}")]
@@ -39,6 +41,13 @@ public class DispositionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DispositionReadDto>> Create([FromBody] DispositionCreateDto dto)
     {
+        if (!string.IsNullOrWhiteSpace(dto.Decision))
+        {
+            var validType = await _typeRepo.GetByCodeAsync(dto.Decision);
+            if (validType is null)
+                return BadRequest(new { detail = $"Geçersiz disposition kodu: '{dto.Decision}'." });
+        }
+
         var entity = new Disposition
         {
             DefectId = dto.DefectId,

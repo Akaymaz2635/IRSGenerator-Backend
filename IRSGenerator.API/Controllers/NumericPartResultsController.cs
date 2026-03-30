@@ -18,7 +18,7 @@ public class NumericPartResultsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<NumericPartResultReadDto>>> GetAll(
-        [FromQuery] long? characterId = null)
+        [FromQuery(Name = "character_id")] long? characterId = null)
     {
         IEnumerable<NumericPartResult> items = characterId.HasValue
             ? await _repo.GetByCharacterIdAsync(characterId.Value)
@@ -42,6 +42,7 @@ public class NumericPartResultsController : ControllerBase
         var entity = new NumericPartResult
         {
             Actual      = dto.Actual,
+            PartLabel   = dto.PartLabel,
             CharacterId = dto.CharacterId,
         };
         var created = await _repo.AddAsync(entity);
@@ -53,7 +54,8 @@ public class NumericPartResultsController : ControllerBase
     {
         var entity = await _repo.GetByIdAsync(id);
         if (entity is null) return NotFound();
-        entity.Actual = dto.Actual;
+        entity.Actual    = dto.Actual;
+        entity.PartLabel = dto.PartLabel;
         await _repo.UpdateAsync(entity);
         return NoContent();
     }
@@ -67,10 +69,22 @@ public class NumericPartResultsController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete]
+    public async Task<IActionResult> DeleteByCharacter(
+        [FromQuery(Name = "character_id")] long? characterId)
+    {
+        if (!characterId.HasValue) return BadRequest("character_id is required");
+        var items = await _repo.GetByCharacterIdAsync(characterId.Value);
+        foreach (var item in items)
+            await _repo.DeleteAsync(item);
+        return NoContent();
+    }
+
     private static NumericPartResultReadDto ToDto(NumericPartResult e) => new()
     {
         Id          = e.Id,
         Actual      = e.Actual,
+        PartLabel   = e.PartLabel,
         CharacterId = e.CharacterId,
         CreatedAt   = e.CreatedAt,
         UpdatedAt   = e.UpdatedAt,

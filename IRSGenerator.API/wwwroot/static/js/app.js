@@ -1,11 +1,14 @@
 import { register, start, navigate } from './router.js';
-import { dashboardPage }       from './pages/dashboard.js';
-import { inspectionsPage }     from './pages/inspections.js';
-import { inspectionFormPage }  from './pages/inspection-form.js';
-import { inspectionDetailPage } from './pages/inspection-detail.js';
-import { settingsPage }        from './pages/settings.js';
-import { analyticsPage }       from './pages/analytics.js';
-import { session }             from './session.js';
+import { dashboardPage }          from './pages/dashboard.js';
+import { inspectionsPage }        from './pages/inspections.js';
+import { inspectionFormPage }     from './pages/inspection-form.js';
+import { inspectionDetailPage }   from './pages/inspection-detail.js';
+import { settingsPage }           from './pages/settings.js';
+import { analyticsPage }          from './pages/analytics.js';
+import { irsProjectsPage }        from './pages/irs-projects.js';
+import { irsProjectDetailPage }   from './pages/irs-project-detail.js';
+import { characterDetailPage }    from './pages/character-detail.js';
+import { session }                from './session.js';
 
 // ── Routes ─────────────────────────────────────────────────
 register('/', dashboardPage);
@@ -15,6 +18,9 @@ register('/inspections/:id/edit', ({ id }) => inspectionFormPage(Number(id)));
 register('/inspections/:id', ({ id }) => inspectionDetailPage(Number(id)));
 register('/settings', settingsPage);
 register('/analytics', analyticsPage);
+register('/irs', irsProjectsPage);
+register('/irs/:id', ({ id }) => irsProjectDetailPage(Number(id)));
+register('/irs/:projectId/characters/:id', ({ projectId, id }) => characterDetailPage(Number(projectId), Number(id)));
 
 // ── Active nav highlighting ─────────────────────────────────
 function updateNav() {
@@ -26,6 +32,7 @@ function updateNav() {
     if (route === 'inspections')  active = hash.startsWith('/inspections');
     if (route === 'settings')     active = hash.startsWith('/settings');
     if (route === 'analytics')    active = hash.startsWith('/analytics');
+    if (route === 'irs')          active = hash.startsWith('/irs');
     link.classList.toggle('active', active);
   });
 

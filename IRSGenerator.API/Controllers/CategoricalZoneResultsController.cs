@@ -18,7 +18,7 @@ public class CategoricalZoneResultsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoricalZoneResultReadDto>>> GetAll(
-        [FromQuery] long? characterId = null)
+        [FromQuery(Name = "character_id")] long? characterId = null)
     {
         IEnumerable<CategoricalZoneResult> items = characterId.HasValue
             ? await _repo.GetByCharacterIdAsync(characterId.Value)
@@ -68,6 +68,17 @@ public class CategoricalZoneResultsController : ControllerBase
         var entity = await _repo.GetByIdAsync(id);
         if (entity is null) return NotFound();
         await _repo.DeleteAsync(entity);
+        return NoContent();
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteByCharacter(
+        [FromQuery(Name = "character_id")] long? characterId)
+    {
+        if (!characterId.HasValue) return BadRequest("character_id is required");
+        var items = await _repo.GetByCharacterIdAsync(characterId.Value);
+        foreach (var item in items)
+            await _repo.DeleteAsync(item);
         return NoContent();
     }
 

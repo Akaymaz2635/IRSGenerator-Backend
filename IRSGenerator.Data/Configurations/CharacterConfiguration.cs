@@ -19,7 +19,14 @@ internal class CharacterConfiguration : BaseEntityConfiguration<Character>
         builder.HasOne(e => e.IRSProject)
             .WithMany(p => p.Characters)
             .HasForeignKey(e => e.IRSProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
+
+        builder.HasOne(e => e.Inspection)
+            .WithMany()
+            .HasForeignKey(e => e.InspectionId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
 
         builder.HasMany(e => e.NumericPartResults)
             .WithOne(r => r.Character)
@@ -35,5 +42,11 @@ internal class CharacterConfiguration : BaseEntityConfiguration<Character>
             .WithOne(r => r.Character)
             .HasForeignKey(r => r.CharacterId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(e => e.Dispositions)
+            .WithOne(d => d.Character)
+            .HasForeignKey(d => d.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
     }
 }
