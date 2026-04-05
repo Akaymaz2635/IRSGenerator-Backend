@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class ProjectsController : ControllerBase
 {
     private readonly IVisualProjectRepository _repo;
@@ -35,6 +37,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<ProjectReadDto>> Create([FromBody] ProjectCreateDto dto)
     {
         var entity = new VisualProject
@@ -47,6 +50,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] ProjectUpdateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -61,6 +65,7 @@ public class ProjectsController : ControllerBase
 
     // DELETE → soft delete (active = false)
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);

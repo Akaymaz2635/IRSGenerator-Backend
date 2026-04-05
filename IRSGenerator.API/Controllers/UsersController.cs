@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Policy = "AdminOnly")]
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _repo;

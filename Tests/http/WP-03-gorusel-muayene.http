@@ -1,0 +1,124 @@
+### WP-03 — Görsel Muayene & Hata Yönetimi
+### Özellik #14, #15, #16, #17
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ─── TC-03.1 — Hata Tipi Oluşturma ─────────────────────────────────────────
+# Beklenen: 201 Created
+POST {{baseUrl}}/api/defect-types
+Content-Type: {{contentType}}
+
+{
+  "name": "Çizik",
+  "description": "Yüzey çizigi"
+}
+
+###
+
+# Tüm hata tiplerini listele
+GET {{baseUrl}}/api/defect-types
+
+###
+
+# ─── TC-03.2 — Özelleştirilebilir Alan Ekleme ────────────────────────────────
+# defect_type_id yerine TC-03.1'den dönen id'yi kullanın
+# Beklenen: 201 Created
+POST {{baseUrl}}/api/defect-fields
+Content-Type: {{contentType}}
+
+{
+  "defect_type_id": 1,
+  "field_name": "depth",
+  "label": "Derinlik (mm)",
+  "field_type": "number",
+  "required": true,
+  "min_value": 0,
+  "max_value": 10
+}
+
+###
+
+POST {{baseUrl}}/api/defect-fields
+Content-Type: {{contentType}}
+
+{
+  "defect_type_id": 1,
+  "field_name": "color",
+  "label": "Renk",
+  "field_type": "text",
+  "required": false
+}
+
+###
+
+# Hata tipine ait alanlar
+GET {{baseUrl}}/api/defect-fields?defect_type_id=1
+
+###
+
+# ─── TC-03.3 — Hata Kayıt (Tüm Ölçümler) ────────────────────────────────────
+# Beklenen: Tüm ölçüm alanları doğru kaydedilmiş
+POST {{baseUrl}}/api/defects
+Content-Type: {{contentType}}
+
+{
+  "inspection_id": 1,
+  "defect_type_id": 1,
+  "depth": 0.5,
+  "width": 2.0,
+  "length": 5.0,
+  "radius": 0.2,
+  "angle": 45.0,
+  "height": 1.0,
+  "color": "Gri",
+  "high_metal": false
+}
+
+###
+
+# Doğrulama: tüm alanlar
+GET {{baseUrl}}/api/defects/1
+
+###
+
+# Muayeneye ait tüm hatalar
+GET {{baseUrl}}/api/defects?inspection_id=1
+
+###
+
+# ─── TC-03.4 — Hata Hiyerarşisi (Parent-Child) ───────────────────────────────
+# origin_defect_id = parent hata id'si (TC-03.3'te oluşturulan hata)
+# Beklenen: child defect oluştu
+POST {{baseUrl}}/api/defects
+Content-Type: {{contentType}}
+
+{
+  "inspection_id": 1,
+  "defect_type_id": 1,
+  "origin_defect_id": 1,
+  "depth": 0.1,
+  "width": 0.5,
+  "length": 1.0
+}
+
+###
+
+# Doğrulama: parent hata altında child görünüyor mu?
+GET {{baseUrl}}/api/defects/1
+
+###
+
+# ─── Hata güncelleme ─────────────────────────────────────────────────────────
+PUT {{baseUrl}}/api/defects/1
+Content-Type: {{contentType}}
+
+{
+  "depth": 0.8,
+  "color": "Siyah"
+}
+
+###
+
+# ─── Hata silme (soft delete varsa) ─────────────────────────────────────────
+DELETE {{baseUrl}}/api/defects/99

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using IRSGenerator.Core.Entities;
@@ -8,6 +9,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class PhotosController : ControllerBase
 {
     private readonly IPhotoRepository _repo;
@@ -58,6 +60,7 @@ public class PhotosController : ControllerBase
     // Body: multipart/form-data  →  file=<binary>
     [HttpPost]
     [Consumes("multipart/form-data")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<PhotoReadDto>> Upload(
         [FromQuery] long inspection_id,
         [FromQuery] long[]? defect_ids,
@@ -101,6 +104,7 @@ public class PhotosController : ControllerBase
 
     // PUT /api/photos/{id}/defects
     [HttpPut("{id:long}/defects")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> SetDefects(long id, [FromBody] long[] defectIds)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -111,6 +115,7 @@ public class PhotosController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);

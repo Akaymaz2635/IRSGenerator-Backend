@@ -18,7 +18,7 @@ public class WordOpSheetParser
     // Dimension values to skip
     private static readonly string[] SkipDimSuffixes = ["INCH", "INCHES"];
 
-    // Dimension keywords that indicate a categorical (LOT) character
+    // Dimension keywords that indicate an attribute (categorical) character
     private static readonly string[] LotKeywords =
         ["VISUAL", "CHECK", "MARKING", "SURFACE", "COATING"];
 
@@ -90,7 +90,7 @@ public class WordOpSheetParser
                 var inspLevel = inspLevelCol >= 0 && inspLevelCol < cells.Count? GetCellText(cells[inspLevelCol]).Trim() : null;
 
                 bool isLot = IsLotDimension(dimension);
-                if (isLot) badge = "LOT";
+                if (isLot) badge = "ATTRIBUTE";
 
                 var limits = LimitCatcherService.CatchMeasurement(dimension);
 

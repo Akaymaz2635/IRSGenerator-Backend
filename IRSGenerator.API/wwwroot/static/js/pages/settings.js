@@ -25,6 +25,12 @@ export async function settingsPage() {
         <button class="tab-btn ${activeTab === 'defect-types' ? 'active' : ''}" data-tab="defect-types">
           Hata Tipleri
         </button>
+        <button class="tab-btn ${activeTab === 'cause-codes' ? 'active' : ''}" data-tab="cause-codes">
+          Cause Codes
+        </button>
+        <button class="tab-btn ${activeTab === 'ncm-disp-types' ? 'active' : ''}" data-tab="ncm-disp-types">
+          NCM Disposition Types
+        </button>
       </div>
 
       <div id="tab-content">
@@ -40,11 +46,10 @@ export async function settingsPage() {
     });
 
     const tabContent = root.querySelector('#tab-content');
-    if (activeTab === 'projects') {
-      await renderProjectsTab(tabContent);
-    } else {
-      await renderDefectTypesTab(tabContent);
-    }
+    if (activeTab === 'projects')          await renderProjectsTab(tabContent);
+    else if (activeTab === 'defect-types') await renderDefectTypesTab(tabContent);
+    else if (activeTab === 'cause-codes')  await renderCauseCodesTab(tabContent);
+    else if (activeTab === 'ncm-disp-types') await renderNcmDispTypesTab(tabContent);
   }
 
   await render();
@@ -334,4 +339,224 @@ function openDefectTypeModal(existing, onDone) {
       submitBtn.disabled = false;
     }
   });
+}
+
+// ── Cause Codes Tab ────────────────────────────────────────────────────────
+async function renderCauseCodesTab(container) {
+  const items = await api.causeCodes.list();
+
+  const rows = items.map((c) => `
+    <tr>
+      <td class="col-id">#${c.id}</td>
+      <td><strong>${escHtml(c.code)}</strong></td>
+      <td>${escHtml(c.description)}</td>
+      <td>${c.sort_order}</td>
+      <td><span class="badge ${c.active ? 'badge-success' : 'badge-neutral'}">${c.active ? 'Aktif' : 'Pasif'}</span></td>
+      <td class="col-actions">
+        <button class="btn btn-ghost btn-xs edit-cc-btn" data-id="${c.id}">Düzenle</button>
+        <button class="btn btn-danger btn-xs delete-cc-btn" data-id="${c.id}" data-code="${escHtml(c.code)}">Sil</button>
+      </td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Cause Codes (${items.length})</span>
+        <button class="btn btn-primary btn-sm" id="add-cc-btn">+ Ekle</button>
+      </div>
+      ${items.length === 0
+        ? '<div class="empty">Kayıt yok.</div>'
+        : `<table class="data-table">
+            <thead><tr>
+              <th class="col-id">#</th><th>Code</th><th>Description</th>
+              <th>Sort</th><th>Durum</th><th>İşlem</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`}
+    </div>`;
+
+  container.querySelector('#add-cc-btn')?.addEventListener('click', () =>
+    openCauseCodeModal(null, () => renderCauseCodesTab(container)));
+
+  container.querySelectorAll('.edit-cc-btn').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const item = items.find((c) => c.id === Number(btn.dataset.id));
+      if (item) openCauseCodeModal(item, () => renderCauseCodesTab(container));
+    }));
+
+  container.querySelectorAll('.delete-cc-btn').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      if (!confirm(`"${btn.dataset.code}" silinsin mi?`)) return;
+      await api.causeCodes.delete(Number(btn.dataset.id));
+      window.toast('Silindi.', 'success');
+      await renderCauseCodesTab(container);
+    }));
+}
+
+function openCauseCodeModal(existing, onDone) {
+  const isEdit = !!existing;
+  window.modal.open(`
+    <h2 class="modal-title">${isEdit ? 'Cause Code Düzenle' : 'Yeni Cause Code'}</h2>
+    <div class="form-group">
+      <label class="form-label">Code <span class="text-danger">*</span></label>
+      <input id="cc-code" class="form-control" value="${escHtml(existing?.code || '')}" placeholder="ör. CC001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description <span class="text-danger">*</span></label>
+      <input id="cc-desc" class="form-control" value="${escHtml(existing?.description || '')}" placeholder="ör. Operator Error">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sort Order</label>
+      <input id="cc-sort" type="number" class="form-control" value="${existing?.sort_order ?? 0}">
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input id="cc-active" type="checkbox" ${(existing?.active ?? true) ? 'checked' : ''}>
+        Aktif
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cc-cancel">İptal</button>
+      <button class="btn btn-primary" id="cc-save">Kaydet</button>
+    </div>`);
+
+  document.getElementById('cc-cancel').addEventListener('click', () => window.modal.close());
+  document.getElementById('cc-save').addEventListener('click', async () => {
+    const code = document.getElementById('cc-code').value.trim();
+    const desc = document.getElementById('cc-desc').value.trim();
+    if (!code || !desc) { window.toast('Code ve Description zorunludur.', 'error'); return; }
+    const data = {
+      code, description: desc,
+      sort_order: parseInt(document.getElementById('cc-sort').value || '0', 10),
+      active: document.getElementById('cc-active').checked,
+    };
+    try {
+      if (isEdit) await api.causeCodes.update(existing.id, data);
+      else        await api.causeCodes.create(data);
+      window.toast(isEdit ? 'Güncellendi.' : 'Oluşturuldu.', 'success');
+      window.modal.close();
+      await onDone();
+    } catch (err) { window.toast('Hata: ' + err.message, 'error'); }
+  });
+}
+
+// ── NCM Disposition Types Tab ──────────────────────────────────────────────
+async function renderNcmDispTypesTab(container) {
+  const items = await api.ncmDispositionTypes.list();
+
+  const rows = items.map((t) => `
+    <tr>
+      <td class="col-id">#${t.id}</td>
+      <td><strong>${escHtml(t.code)}</strong></td>
+      <td>${escHtml(t.label)}</td>
+      <td class="text-secondary" style="font-size:12px;">${escHtml(t.description)}</td>
+      <td style="font-size:12px;">${escHtml(t.template_file_name)}</td>
+      <td>${t.sort_order}</td>
+      <td><span class="badge ${t.active ? 'badge-success' : 'badge-neutral'}">${t.active ? 'Aktif' : 'Pasif'}</span></td>
+      <td class="col-actions">
+        <button class="btn btn-ghost btn-xs edit-ndt-btn" data-id="${t.id}">Düzenle</button>
+        <button class="btn btn-danger btn-xs delete-ndt-btn" data-id="${t.id}" data-code="${escHtml(t.code)}">Sil</button>
+      </td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">NCM Disposition Types (${items.length})</span>
+        <button class="btn btn-primary btn-sm" id="add-ndt-btn">+ Ekle</button>
+      </div>
+      ${items.length === 0
+        ? '<div class="empty">Kayıt yok.</div>'
+        : `<table class="data-table">
+            <thead><tr>
+              <th class="col-id">#</th><th>Code</th><th>Label</th><th>Description</th>
+              <th>Template File</th><th>Sort</th><th>Durum</th><th>İşlem</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`}
+    </div>`;
+
+  container.querySelector('#add-ndt-btn')?.addEventListener('click', () =>
+    openNcmDispTypeModal(null, () => renderNcmDispTypesTab(container)));
+
+  container.querySelectorAll('.edit-ndt-btn').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const item = items.find((t) => t.id === Number(btn.dataset.id));
+      if (item) openNcmDispTypeModal(item, () => renderNcmDispTypesTab(container));
+    }));
+
+  container.querySelectorAll('.delete-ndt-btn').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      if (!confirm(`"${btn.dataset.code}" silinsin mi?`)) return;
+      await api.ncmDispositionTypes.delete(Number(btn.dataset.id));
+      window.toast('Silindi.', 'success');
+      await renderNcmDispTypesTab(container);
+    }));
+}
+
+function openNcmDispTypeModal(existing, onDone) {
+  const isEdit = !!existing;
+  window.modal.open(`
+    <h2 class="modal-title">${isEdit ? 'NCM Disp. Type Düzenle' : 'Yeni NCM Disposition Type'}</h2>
+    <div class="form-group">
+      <label class="form-label">Code <span class="text-danger">*</span></label>
+      <input id="ndt-code" class="form-control" value="${escHtml(existing?.code || '')}" placeholder="ör. ACCEPT">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Label <span class="text-danger">*</span></label>
+      <input id="ndt-label" class="form-control" value="${escHtml(existing?.label || '')}" placeholder="ör. Accept (Use As Is)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input id="ndt-desc" class="form-control" value="${escHtml(existing?.description || '')}" placeholder="Kısa açıklama">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Template File Name <span class="text-danger">*</span>
+        <span class="text-secondary" style="font-size:11px;"> (DispositionTemplates klasöründeki .docx adı)</span>
+      </label>
+      <input id="ndt-tmpl" class="form-control" value="${escHtml(existing?.template_file_name || '')}" placeholder="ör. ACCEPT.docx">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sort Order</label>
+      <input id="ndt-sort" type="number" class="form-control" value="${existing?.sort_order ?? 0}">
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input id="ndt-active" type="checkbox" ${(existing?.active ?? true) ? 'checked' : ''}>
+        Aktif
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="ndt-cancel">İptal</button>
+      <button class="btn btn-primary" id="ndt-save">Kaydet</button>
+    </div>`);
+
+  document.getElementById('ndt-cancel').addEventListener('click', () => window.modal.close());
+  document.getElementById('ndt-save').addEventListener('click', async () => {
+    const code  = document.getElementById('ndt-code').value.trim();
+    const label = document.getElementById('ndt-label').value.trim();
+    const tmpl  = document.getElementById('ndt-tmpl').value.trim();
+    if (!code || !label || !tmpl) {
+      window.toast('Code, Label ve Template File zorunludur.', 'error'); return;
+    }
+    const data = {
+      code, label, template_file_name: tmpl,
+      description: document.getElementById('ndt-desc').value.trim(),
+      sort_order: parseInt(document.getElementById('ndt-sort').value || '0', 10),
+      active: document.getElementById('ndt-active').checked,
+    };
+    try {
+      if (isEdit) await api.ncmDispositionTypes.update(existing.id, data);
+      else        await api.ncmDispositionTypes.create(data);
+      window.toast(isEdit ? 'Güncellendi.' : 'Oluşturuldu.', 'success');
+      window.modal.close();
+      await onDone();
+    } catch (err) { window.toast('Hata: ' + err.message, 'error'); }
+  });
+}
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

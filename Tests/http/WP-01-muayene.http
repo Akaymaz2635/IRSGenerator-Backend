@@ -1,0 +1,108 @@
+### WP-01 — Muayene Oluşturma & Durum Takibi
+### Ortam: https://localhost:7164
+### VS Code REST Client veya JetBrains HTTP Client ile çalıştırın.
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ─── TC-01.1 — Muayene Oluşturma (Happy Path) ────────────────────────────────
+# Beklenen: 201 Created, status="open"
+POST {{baseUrl}}/api/inspections
+Content-Type: {{contentType}}
+
+{
+  "part_number": "P100",
+  "serial_number": "SN001",
+  "operation_number": "OP10",
+  "inspector": "Test Mühendis",
+  "notes": "WP-01 test muayenesi"
+}
+
+###
+
+# ─── TC-01.2 — Zorunlu Alan Kontrolü ─────────────────────────────────────────
+# Beklenen: 400 Bad Request (part_number zorunlu)
+POST {{baseUrl}}/api/inspections
+Content-Type: {{contentType}}
+
+{
+  "notes": "sadece not, part_number eksik"
+}
+
+###
+
+# ─── TC-01.3a — Durum Filtreleme (status=open) ───────────────────────────────
+# Beklenen: Sadece status="open" kayıtlar
+GET {{baseUrl}}/api/inspections?status=open
+
+###
+
+# ─── TC-01.3b — Serbest Metin Arama ──────────────────────────────────────────
+# Beklenen: PartNumber içinde "P100" geçen kayıtlar
+GET {{baseUrl}}/api/inspections?search=P100
+
+###
+
+# ─── TC-01.3c — Proje Filtresi ───────────────────────────────────────────────
+# Beklenen: project_id=1 olan muayeneler
+# @prompt inspectionProjectId
+GET {{baseUrl}}/api/inspections?project_id=1
+
+###
+
+# ─── TC-01.4 — Muayene Tamamlama (Tüm Disposition'lar Mevcut) ────────────────
+# Adım 1: Önce TC-01.1'deki muayene ID'sini @inspectionId değişkenine atayın.
+# Adım 2: Aşağıdaki adımları sırasıyla çalıştırın.
+
+# @inspectionId = <TC-01.1 yanıtındaki id>
+
+# Adım 2a: Hataya nötralize edici disposition ekle
+# (disposition endpoint'leri WP-05'te kapsamlı test edilir)
+POST {{baseUrl}}/api/defects
+Content-Type: {{contentType}}
+
+{
+  "inspection_id": 1,
+  "defect_type_id": 1,
+  "depth": 0.5,
+  "width": 1.0,
+  "length": 3.0
+}
+
+###
+
+# Adım 2b: SCRAP kararı ekle (IsNeutralizing=true)
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 1,
+  "decision": "SCRAP",
+  "entered_by": "Test Mühendis",
+  "scrap_reason": "WP-01 tamamlama testi"
+}
+
+###
+
+# Adım 2c: Muayeneyi tamamla
+# Beklenen: 204 NoContent, status → "completed"
+POST {{baseUrl}}/api/inspections/1/complete
+
+###
+
+# ─── TC-01.5 — Eksik Disposition ile Tamamlama (Validation) ──────────────────
+# Senaryo: Hata var ama disposition eklenmemiş
+# Beklenen: 400 veya 422 — hata mesajı
+
+# Önce yeni muayene oluştur (TC-01.1 tekrar), sonra hata ekle, disposition EKLEMEKSİZİN tamamlamayı dene
+POST {{baseUrl}}/api/inspections/2/complete
+
+###
+
+# ─── Yardımcı: Tüm muayeneleri listele ──────────────────────────────────────
+GET {{baseUrl}}/api/inspections
+
+###
+
+# ─── Yardımcı: Tek muayene detayı ───────────────────────────────────────────
+GET {{baseUrl}}/api/inspections/1

@@ -1,0 +1,95 @@
+### WP-06 — Kullanıcı & Yetkilendirme
+### Özellik #28, #29, #30, #31, #32
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ─── TC-06.1 — Login (Happy Path) ────────────────────────────────────────────
+# Beklenen: 200, { "is_admin": true/false, "user": {...} }
+# sicil ve password alanlarını mevcut test kullanıcısıyla güncelleyin
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "sicil": "12345",
+  "password": "test123"
+}
+
+###
+
+# ─── TC-06.2 — Login (Yanlış Şifre) ─────────────────────────────────────────
+# Beklenen: 401 Unauthorized
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "sicil": "12345",
+  "password": "yanlis_sifre"
+}
+
+###
+
+# ─── TC-06.3 — Kullanıcı Oluşturma ──────────────────────────────────────────
+# Beklenen: 201 Created
+POST {{baseUrl}}/api/users
+Content-Type: {{contentType}}
+
+{
+  "employee_id": "99999",
+  "first_name": "Test",
+  "last_name": "User",
+  "password": "test123",
+  "role": "inspector"
+}
+
+###
+
+# ─── TC-06.3 — Kullanıcı Güncelleme ─────────────────────────────────────────
+# Beklenen: 204 NoContent
+# {id} yerine TC-06.3'te oluşturulan kullanıcının id'sini girin
+PUT {{baseUrl}}/api/users/1
+Content-Type: {{contentType}}
+
+{
+  "first_name": "Değişti",
+  "last_name": "User"
+}
+
+###
+
+# Doğrulama: isim güncellenmiş mi?
+GET {{baseUrl}}/api/users/1
+
+###
+
+# ─── TC-06.3 — Kullanıcı Silme (Soft Delete) ─────────────────────────────────
+# Beklenen: 204 NoContent, DB'de active=false (kayıt silinmedi)
+DELETE {{baseUrl}}/api/users/1
+
+###
+
+# Doğrulama: active=false
+GET {{baseUrl}}/api/users/1
+
+###
+
+# ─── TC-06.4 — Soft Delete Doğrulama ────────────────────────────────────────
+
+# all=false → silinen kullanıcı listede YOK
+GET {{baseUrl}}/api/users?all=false
+
+###
+
+# all=true → silinen kullanıcı listede VAR
+GET {{baseUrl}}/api/users?all=true
+
+###
+
+# ─── Yardımcı: Tüm aktif kullanıcılar ───────────────────────────────────────
+GET {{baseUrl}}/api/users
+
+###
+
+# ─── Yardımcı: Mevcut rolü görüntüle ─────────────────────────────────────────
+# (kullanıcı profili veya me endpoint'i varsa)
+GET {{baseUrl}}/api/auth/me

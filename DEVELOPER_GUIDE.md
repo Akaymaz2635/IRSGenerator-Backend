@@ -1,6 +1,6 @@
-# IRSGenerator — Geliştirici Kılavuzu
+# QualiSight — Geliştirici Kılavuzu
 
-Bu belge, IRSGenerator projesini geliştiren veya bakımını yapan yazılımcılar içindir.
+Bu belge, QualiSight projesini geliştiren veya bakımını yapan yazılımcılar içindir.
 
 ---
 
@@ -9,15 +9,16 @@ Bu belge, IRSGenerator projesini geliştiren veya bakımını yapan yazılımcı
 1. [Proje Mimarisi](#1-proje-mimarisi)
 2. [Çözüm Yapısı](#2-çözüm-yapısı)
 3. [Geliştirme Ortamı Kurulumu](#3-geliştirme-ortamı-kurulumu)
-4. [Veritabanı Şeması](#4-veritabanı-şeması)
-5. [Temel Servisler](#5-temel-servisler)
-6. [API Endpoint Referansı](#6-api-endpoint-referansı)
-7. [Frontend Mimarisi](#7-frontend-mimarisi)
-8. [Yeni Özellik Ekleme](#8-yeni-özellik-ekleme)
-9. [Migration Yönetimi](#9-migration-yönetimi)
-10. [Test Etme](#10-test-etme)
-11. [Yaygın Bakım Görevleri](#11-yaygın-bakım-görevleri)
-12. [Bilinen Kısıtlamalar ve Gelecek Geliştirmeler](#12-bilinen-kısıtlamalar-ve-gelecek-geliştirmeler)
+4. [Kimlik Doğrulama & Yetkilendirme](#4-kimlik-doğrulama--yetkilendirme)
+5. [Veritabanı Şeması](#5-veritabanı-şeması)
+6. [Temel Servisler](#6-temel-servisler)
+7. [API Endpoint Referansı](#7-api-endpoint-referansı)
+8. [Frontend Mimarisi](#8-frontend-mimarisi)
+9. [Yeni Özellik Ekleme](#9-yeni-özellik-ekleme)
+10. [Migration Yönetimi](#10-migration-yönetimi)
+11. [Test Etme](#11-test-etme)
+12. [Yaygın Bakım Görevleri](#12-yaygın-bakım-görevleri)
+13. [Bilinen Kısıtlamalar ve Önerilen Geliştirmeler](#13-bilinen-kısıtlamalar-ve-önerilen-geliştirmeler)
 
 ---
 
@@ -28,23 +29,27 @@ Proje klasik **N-Katmanlı (N-Tier) Clean Architecture** yaklaşımıyla tasarla
 ```
 ┌─────────────────────────────────────────────────────┐
 │  IRSGenerator.API  (Presentation Layer)             │
-│  ├── Controllers/   ASP.NET Core Web API            │
-│  ├── wwwroot/       Static HTML/JS/CSS frontend     │
-│  └── Program.cs     DI container, middleware        │
+│  ├── Controllers/   ASP.NET Core Web API (20 ctrl)  │
+│  ├── Extensions/    ServiceExtensions.cs (DI + Auth)│
+│  ├── DispositionTemplates/  Word şablonları (.docx) │
+│  ├── wwwroot/       Statik SPA (HTML/JS/CSS)        │
+│  └── Program.cs     Uygulama başlangıcı, middleware  │
 ├─────────────────────────────────────────────────────┤
 │  IRSGenerator.Core  (Domain Layer)                  │
-│  ├── Entities/      Domain modelleri                │
-│  ├── Repositories/  Interface tanımları (sözleşme)  │
-│  └── Services/      İş mantığı servisleri           │
+│  ├── Entities/      24 domain modeli                │
+│  ├── Repositories/  21 interface tanımı             │
+│  └── Services/      5 iş mantığı servisi            │
 ├─────────────────────────────────────────────────────┤
 │  IRSGenerator.Data  (Infrastructure Layer)          │
-│  ├── Repositories/  EF Core implementasyonları      │
-│  ├── Configurations/ Fluent API entity config       │
-│  ├── Migrations/    DB migration dosyaları          │
+│  ├── Repositories/  21 EF Core implementasyonu      │
+│  ├── Migrations/    8 migration dosyası             │
 │  └── IRSGeneratorDbContext.cs                       │
 ├─────────────────────────────────────────────────────┤
 │  IRSGenerator.Shared  (DTO Layer)                   │
 │  └── Dtos/          Request/Response nesneleri      │
+├─────────────────────────────────────────────────────┤
+│  IRSGenerator.Tests  (Test Layer)                   │
+│  └── Services/      xUnit servis testleri           │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -55,92 +60,99 @@ Proje klasik **N-Katmanlı (N-Tier) Clean Architecture** yaklaşımıyla tasarla
 | Backend framework | ASP.NET Core 8 Web API |
 | ORM | Entity Framework Core 8 |
 | Veritabanı | PostgreSQL 14+ |
-| Word işleme | DocumentFormat.OpenXml (Open XML SDK) |
-| JSON | System.Text.Json (snake_case policy) |
-| Frontend | Vanilla JS (ES Modules), HTML5, CSS3 |
-| Auth | JWT (BCrypt şifre hash) |
+| Word işleme | DocumentFormat.OpenXml 3.* (Open XML SDK) |
+| JSON serileştirme | System.Text.Json — `SnakeCaseLower` policy |
+| Frontend | Vanilla JS ES Modules, HTML5, CSS3 (build aracı yok) |
+| Kimlik doğrulama | Cookie tabanlı (`qc_auth` HttpOnly cookie) |
+| Şifre hash | SHA256 hex (salt yok) |
+| Swagger | Swashbuckle.AspNetCore 10.1.7 |
 
 ---
 
 ## 2. Çözüm Yapısı
 
 ```
-IRSGenerator-Backend/
+QualiSight/
+├── IRSGenerator.sln
 │
 ├── IRSGenerator.API/
 │   ├── Controllers/
-│   │   ├── AuthController.cs              # Giriş / JWT üretme
-│   │   ├── CharactersController.cs        # Muayene kalemleri + disposition
-│   │   ├── InspectionsController.cs       # Muayene CRUD + rapor
-│   │   ├── DispositionsController.cs      # Disposition (defect bazlı)
-│   │   ├── DispositionTypesController.cs  # Disposition type yönetimi
-│   │   ├── DispositionTransitionsController.cs  # State machine geçişleri
-│   │   ├── DefectsController.cs           # Görsel kusurlar
-│   │   ├── DefectTypesController.cs       # Kusur tipi yönetimi
-│   │   ├── NumericPartResultsController.cs
-│   │   ├── CategoricalPartResultsController.cs
-│   │   ├── CategoricalZoneResultsController.cs
-│   │   ├── IRSProjectsController.cs       # Proje şablonları
-│   │   ├── ProjectsController.cs          # Görsel proje yönetimi
-│   │   ├── UsersController.cs
-│   │   └── PhotosController.cs
+│   │   ├── AuthController.cs                   # Giriş/çıkış, oturum bilgisi
+│   │   ├── ProjectsController.cs               # VisualProject CRUD
+│   │   ├── InspectionsController.cs            # Muayene CRUD + NCM verisi
+│   │   ├── CharactersController.cs             # Muayene kalemi + disposition
+│   │   ├── NumericPartResultsController.cs     # Sayısal ölçüm sonuçları
+│   │   ├── CategoricalPartResultsController.cs # Kategorik sonuçlar
+│   │   ├── CategoricalZoneResultsController.cs # Bölge kategorik sonuçları
+│   │   ├── DefectsController.cs                # Görsel kusurlar
+│   │   ├── DefectTypesController.cs            # Kusur tipi yönetimi
+│   │   ├── DefectFieldsController.cs           # Kusur özel alanları
+│   │   ├── DispositionsController.cs           # Karar kayıtları
+│   │   ├── DispositionTypesController.cs       # Karar tipi yönetimi
+│   │   ├── DispositionTransitionsController.cs # State machine geçişleri
+│   │   ├── PhotosController.cs                 # Fotoğraf yükleme/listeleme
+│   │   ├── VisualSystemConfigController.cs     # Sistem konfigürasyonu
+│   │   ├── UsersController.cs                  # Kullanıcı yönetimi [AdminOnly]
+│   │   ├── NcmController.cs                    # NCM disposition sheet üretme
+│   │   ├── CauseCodesController.cs             # Kök neden kodları
+│   │   └── NcmDispositionTypesController.cs    # NCM disposition tipleri
+│   │
+│   ├── Extensions/
+│   │   └── ServiceExtensions.cs                # DI kayıtları + Auth politikaları
+│   │
+│   ├── DispositionTemplates/                   # NCM Word şablonları (.docx)
+│   │   ├── ACCEPT.docx
+│   │   ├── CTP&MRB.docx
+│   │   ├── CTP&R-I.docx
+│   │   ├── CTP&R-W.docx
+│   │   ├── DEBURR R-W.docx
+│   │   ├── EMPTY.docx
+│   │   ├── MRB.docx
+│   │   ├── RETURN-TO-VENDOR.docx
+│   │   ├── SCRAP-IND.docx
+│   │   ├── SCRAP-LOT.docx
+│   │   ├── STD-OP-R-W.docx
+│   │   └── WELD R-W.docx
 │   │
 │   ├── wwwroot/
-│   │   ├── index.html                     # SPA giriş noktası
-│   │   ├── op-sheets/                     # Yüklenen .docx dosyaları (gitignore)
-│   │   ├── photos/                        # Yüklenen fotoğraflar (gitignore)
+│   │   ├── index.html                          # SPA giriş noktası
+│   │   ├── admin.html                          # Admin SPA
 │   │   └── static/
-│   │       ├── css/style.css
+│   │       ├── css/style.css                   # Karanlık/aydınlık tema
 │   │       └── js/
-│   │           ├── api.js                 # API istek katmanı
-│   │           ├── app.js                 # Router, layout
-│   │           ├── session.js             # JWT session yönetimi
-│   │           └── pages/
-│   │               ├── inspection-detail.js   # Ana muayene sayfası
-│   │               ├── inspections.js
-│   │               ├── inspection-form.js
-│   │               ├── character-detail.js
-│   │               ├── irs-projects.js
-│   │               └── irs-project-detail.js
+│   │           ├── api.js                      # Merkezi API istek katmanı
+│   │           ├── app.js                      # Hash router + layout
+│   │           ├── admin.js                    # Admin SPA router
+│   │           └── pages/                      # 22 sayfa modülü
 │   │
-│   ├── appsettings.json                   # DB bağlantısı (üretimde env var kullanın)
-│   └── Program.cs                         # Uygulama başlangıcı, DI, middleware
+│   ├── appsettings.json
+│   ├── Program.cs
+│   └── IRSGenerator.API.csproj
 │
 ├── IRSGenerator.Core/
-│   ├── Entities/
-│   │   ├── BaseEntity.cs                  # Id, CreatedAt, UpdatedAt
-│   │   ├── Inspection.cs
-│   │   ├── Character.cs                   # Muayene kalemi (dimensional/LOT)
-│   │   ├── NumericPartResult.cs           # Ölçüm sonuçları
-│   │   ├── CategoricalPartResult.cs       # LOT sonuçları
-│   │   ├── CategoricalZoneResult.cs       # Bölge bazlı LOT sonuçları
-│   │   ├── Defect.cs                      # Görsel kusur
-│   │   ├── Disposition.cs                 # Karar kaydı
-│   │   ├── DispositionType.cs             # Karar tipi (USE_AS_IS, REWORK vb.)
-│   │   ├── DispositionTransition.cs       # State machine geçişleri
-│   │   └── ...
-│   │
-│   ├── Repositories/                      # Interface tanımları
-│   │   ├── IBaseRepository.cs
-│   │   ├── ICharacterRepository.cs
-│   │   ├── IInspectionRepository.cs
-│   │   ├── IDispositionRepository.cs
-│   │   └── ...
-│   │
-│   └── Services/
-│       ├── OlcuParser.cs                  # Dimension string → limit çözümleme
-│       ├── LimitCatcher.cs                # OlcuParser'ı sarmalayan yardımcı
-│       ├── WordOpSheetParser.cs           # .docx → Character[] dönüşümü
-│       └── WordReportWriter.cs            # Inspection → Word raporu
+│   ├── Entities/                               # 24 entity dosyası
+│   ├── Repositories/                           # 21 interface
+│   ├── Services/
+│   │   ├── OlcuParser.cs                       # Dimension string parser
+│   │   ├── LimitCatcher.cs                     # Parser wrapper → double[2]
+│   │   ├── WordOpSheetParser.cs                # .docx → Character[]
+│   │   ├── WordReportWriter.cs                 # Inspection → Word raporu
+│   │   └── NcmSheetGenerator.cs               # NCM Word şablon doldurma
+│   └── IRSGenerator.Core.csproj
 │
 ├── IRSGenerator.Data/
-│   ├── IRSGeneratorDbContext.cs
-│   ├── Configurations/                    # Fluent API entity konfigürasyonları
-│   ├── Migrations/                        # EF Core migration dosyaları
-│   └── Repositories/                      # EF Core implementasyonları
+│   ├── IRSGeneratorDbContext.cs                # EF Core DbContext + seed data
+│   ├── Repositories/                           # 21 EF Core implementasyonu
+│   ├── Migrations/                             # 8 migration
+│   └── IRSGenerator.Data.csproj
 │
-└── IRSGenerator.Shared/
-    └── Dtos/                              # CreateDto, ReadDto, UpdateDto
+├── IRSGenerator.Shared/
+│   ├── Dtos/                                   # 19 klasör, 50+ DTO sınıfı
+│   └── IRSGenerator.Shared.csproj
+│
+└── IRSGenerator.Tests/
+    ├── Services/                               # OlcuParser vb. testleri
+    └── IRSGenerator.Tests.csproj
 ```
 
 ---
@@ -151,7 +163,7 @@ IRSGenerator-Backend/
 
 - .NET SDK 8.0+
 - PostgreSQL 14+
-- Visual Studio 2022 / Rider / VS Code (C# DevKit eklentisiyle)
+- Visual Studio 2022 / JetBrains Rider / VS Code (C# DevKit eklentisiyle)
 - Git
 
 ### 3.2 Repo'yu Klonla
@@ -166,18 +178,26 @@ cd IRSGenerator-Backend
 ```sql
 -- psql ile bağlan
 CREATE DATABASE "IRSGeneratorDb";
+CREATE USER irsapp WITH ENCRYPTED PASSWORD 'sifreniz';
+GRANT ALL PRIVILEGES ON DATABASE "IRSGeneratorDb" TO irsapp;
 ```
 
 ### 3.4 Connection String Ayarla
 
 `IRSGenerator.API/appsettings.json`:
+
 ```json
 {
   "ConnectionStrings": {
     "PosgresConnection": "Host=localhost;Port=5432;Database=IRSGeneratorDb;Username=postgres;Password=postgres"
+  },
+  "NcmSettings": {
+    "TemplatesPath": ""
   }
 }
 ```
+
+> `NcmSettings.TemplatesPath` boş bırakılırsa `DispositionTemplates/` klasörü otomatik kullanılır.
 
 ### 3.5 Migration Uygula
 
@@ -190,7 +210,8 @@ dotnet ef database update --project IRSGenerator.Data --startup-project IRSGener
 
 ```bash
 dotnet run --project IRSGenerator.API
-# → http://localhost:5297
+# → http://localhost:5297          (QualiSight UI)
+# → http://localhost:5297/admin.html  (Admin paneli)
 # → http://localhost:5297/swagger  (API dökümantasyonu)
 ```
 
@@ -202,7 +223,58 @@ dotnet watch run --project IRSGenerator.API
 
 ---
 
-## 4. Veritabanı Şeması
+## 4. Kimlik Doğrulama & Yetkilendirme
+
+### 4.1 Cookie Tabanlı Auth
+
+Uygulama **JWT kullanmaz**. Kimlik doğrulama `HttpOnly` cookie ile yönetilir.
+
+| Özellik | Değer |
+|---|---|
+| Cookie adı | `qc_auth` |
+| Cookie tipi | HttpOnly, SameSite=Strict |
+| Şema adı | `AppCookie` |
+| Şifre hash | SHA256 hex (salt yok) |
+| Oturum süresi | Tarayıcı kapanmasına kadar (kalıcı değil) |
+
+**Login akışı:**
+```
+POST /api/auth/login  { "sicil": "6518", "password": "****" }
+  → Cookie set edilir
+  → 200 { "id": ..., "display_name": "...", "role": "admin", "is_admin": true }
+```
+
+**Çıkış:**
+```
+POST /api/auth/logout  → Cookie silinir
+```
+
+**Mevcut oturum:**
+```
+GET /api/auth/me  → { "id": ..., "display_name": "...", "role": "..." }
+```
+
+### 4.2 Yetkilendirme Politikaları
+
+`IRSGenerator.API/Extensions/ServiceExtensions.cs` içinde tanımlıdır:
+
+| Politika | Tanım | Hangi roller |
+|---|---|---|
+| `AdminOnly` | Yalnızca admin | `admin` |
+| `CanWrite` | Veri yazabilir | `engineer`, `admin` (inspector hariç) |
+| `CanWriteNcm` | NCM sheet üretebilir | `engineer`, `admin` |
+
+### 4.3 Kullanıcı Rolleri
+
+| Rol | Erişim Seviyesi |
+|---|---|
+| `inspector` | Sadece okuma (GET endpoint'leri) |
+| `engineer` | Veri yazma + NCM sheet üretme |
+| `admin` | Tam erişim + kullanıcı/sistem yönetimi |
+
+---
+
+## 5. Veritabanı Şeması
 
 ### Temel Entity İlişkileri
 
@@ -211,236 +283,422 @@ IRSProject (şablon)
   └── Character[] ─── irs_project_id
 
 Inspection (muayene örneği)
-  ├── Character[]    ─── inspection_id
-  │     ├── NumericPartResult[]
-  │     ├── CategoricalPartResult[]
-  │     ├── CategoricalZoneResult[]
-  │     └── Disposition[]          ─── character_id (dimensional karar)
-  └── Defect[]
-        └── Disposition[]          ─── defect_id (görsel karar)
+  ├── IrsProjectId (nullable — şablon bağlantısı)
+  ├── VisualProjectId (nullable — görsel proje bağlantısı)
+  ├── Character[]
+  │     ├── NumericPartResult[]    (sayısal ölçümler)
+  │     ├── CategoricalPartResult[] (kategorik sonuçlar)
+  │     ├── CategoricalZoneResult[] (bölge sonuçları)
+  │     └── Disposition[]          character_id üzerinden (dimensional karar)
+  ├── Defect[]
+  │     ├── Disposition[]          defect_id üzerinden (görsel karar)
+  │     └── PhotoDefect[] ─── Photo[]
+  └── Photo[]
 
-DispositionType   ←── Disposition.Decision (code referansı, FK değil)
-DispositionTransition  (from_code → to_code state machine)
+DispositionType (code, label, cssClass, isNeutralizing, isInitial)
+DispositionTransition (from_code → to_code) — state machine
+
+CauseCode (NCM kök neden)
+NcmDispositionType (NCM karar tipi + Word şablon dosyası)
 ```
 
-### Önemli Alanlar
+### Kritik Alan Notları
 
 **Character:**
-- `badge` — `null` = dimensional, `"LOT"` = kategorik
-- `inspection_result` — `"Unidentified"` başlangıç, ölçüm sonrası sayısal değer veya `"Conform"/"Not Conform"`
-- `lower_limit`, `upper_limit` — `OlcuParser` tarafından `dimension` stringinden çıkarılır
-- `inspection_id` — bağlı olduğu muayene (nullable; şablon karakterler `null`)
-- `irs_project_id` — bağlı olduğu proje şablonu (nullable)
+- `badge` — `null` = boyutsal (DIM), `"LOT"` = kategorik
+- `inspection_result` — başlangıç: `"Unidentified"`; ölçüm sonrası: sayısal string veya `"Conform"/"Not Conform"`
+- `lower_limit`, `upper_limit` — `OlcuParser` tarafından `dimension` stringinden otomatik çıkarılır
+- `inspection_id` — nullable; şablon karakterleri `null`
 
 **NumericPartResult:**
-- `actual` — ham giriş ("17.65" veya "254.005/254.003/253.998")
-- `part_label` — çok parçalı ölçümde `"P1"`, `"P2"` vb.; rework tarihçesi `"PRE_REWORK"`, `"POST_REWORK"`
+- `actual` — ham giriş: `"17.65"` veya çoklu `"254.005/254.003/253.998"`
+- `part_label` — çok parçalı ölçümde `"P1"`, `"P2"`; rework tarihçesi `"PRE_REWORK"`, `"POST_REWORK"`
+- `update_reason` — değer güncellendiğinde zorunlu açıklama
+- `update_note` — ek not
+
+**CategoricalPartResult:**
+- `update_reason` — değer güncellendiğinde açıklama
 
 **Disposition:**
-- `decision` — `DispositionType.code` değerlerinden biri (string FK, enum değil)
-- `defect_id` veya `character_id` — ikisinden biri `null` olur (görsel vs. dimensional)
+- `decision` — `DispositionType.code` değerlerinden biri (string referans, FK değil)
+- `defect_id` veya `character_id` — ikisinden biri `null` (görsel vs. dimensional karar)
+
+**VisualSystemConfig (key-value):**
+- `PhotoRootFolder` — fotoğrafların saklandığı kök klasör
+- `ReportRootFolder` — rapor çıktı klasörü
+- `BackupRootFolder` — yedek klasörü
+
+### Seed Data
+
+`IRSGeneratorDbContext.OnModelCreating()` içinde:
+
+- **Kullanıcılar:** Employee 6518 (Erdem.Demirtaş), Employee 5956 (Uras.Erken)
+- **13 DispositionType:** USE_AS_IS, KABUL_RESIM, CONFORMS, REWORK, RE_INSPECT, CTP_RE_INSPECT, MRB_SUBMITTED, MRB_CTP, MRB_ACCEPTED, MRB_REJECTED, VOID, REPAIR, SCRAP
+- **DispositionTransition'lar:** State machine geçiş kuralları (REWORK/RE_INSPECT/MRB akışları)
 
 ---
 
-## 5. Temel Servisler
+## 6. Temel Servisler
 
-### 5.1 OlcuParser (`IRSGenerator.Core/Services/OlcuParser.cs`)
+### 6.1 OlcuParser (`IRSGenerator.Core/Services/OlcuParser.cs`)
 
 Dimension stringlerini parse ederek alt/üst limit değerlerini çıkarır.
 
-**Mimari:**
+**Desteklenen 15+ format (öncelik sırasıyla):**
+
 ```
 OlcuYakalayici.Isle(string) → OlcuSonucu?
-  │
-  ├── IplikToleransi      "1/8 NPT", "M8", "UNC" → Format="diş", limitler null
-  ├── FormToleransi        "FLATNESS 0.02"
-  ├── OryantasyonToleransi "PERPENDICULARITY 0.01 | A"
-  ├── LokasyonToleransi    "TRUE POSITION ∅0.05 | A | B"
-  ├── ProfilToleransi      "SP | 0.15"
-  ├── RunoutToleransi      "RUNOUT 0.03 | A-B"
-  ├── SembolTolerans       "⊥ 0.01"
-  ├── EsitToleransliOlcu   "25.4 ± 0.1"
-  ├── ArtiEksiOlcu         "17.75 +0 / -0.15"
-  ├── ArtiEksiOlcu2        "17.75 +0.1 -0.15"
-  ├── MaxMinOlcu           "MIN 5 / MAX 10"
-  ├── LimitToleransliOlcu  "17.60 / 17.75"  ← SONA KONULDU (öncelik sorunu önlenir)
-  ├── MinOlcu              "0.5 MIN"
-  ├── MaxOlcu              "6.3 MAX"
-  └── PuruzlulukOlcu       "Ra 1.6", "6.3 RA"
+  ├── IplikToleransi       "1/8 NPT", "M8", "M10x1.5", "UNC" → Format="diş"
+  ├── FormToleransi         "FLATNESS 0.02", "CYLINDRICITY 0.01"
+  ├── OryantasyonToleransi  "PERPENDICULARITY 0.01 | A"
+  ├── LokasyonToleransi     "TRUE POSITION ∅0.05 | A | B"
+  ├── ProfilToleransi       "SP | 0.15"
+  ├── RunoutToleransi       "RUNOUT 0.03 | A-B"
+  ├── SembolTolerans        "⊥ 0.01", "○ 0.02"
+  ├── EsitToleransliOlcu    "25.4 ± 0.1"  → lower=25.3, upper=25.5
+  ├── ArtiEksiOlcu          "17.75 +0 / -0.15" → lower=17.60, upper=17.75
+  ├── ArtiEksiOlcu2         "17.75 +0.1 -0.15"
+  ├── MaxMinOlcu            "MIN 5 / MAX 10" → lower=5, upper=10
+  ├── MinOlcu               "0.5 MIN" → lower=0.5, upper=MaxValue
+  ├── MaxOlcu               "6.3 MAX" → lower=0, upper=6.3
+  ├── PuruzlulukOlcu        "Ra 1.6", "6.3 RA"
+  └── LimitToleransliOlcu   "17.60 / 17.75"  ← EN SONA konuldu (öncelik sorunu önlenir)
 ```
 
-> **Önemli:** Format listesindeki sıra kritiktir. `EsitToleransliOlcu` ve `ArtiEksiOlcu`, `LimitToleransliOlcu`'dan önce gelmelidir. Aksi hâlde `"17.75 +0/-0.15"` gibi değerler yanlış parse edilir.
+> **Kritik:** Format listesindeki sıra önemlidir. `EsitToleransliOlcu` ve `ArtiEksiOlcu`,
+> `LimitToleransliOlcu`'dan önce gelmek zorundadır.
 
 **Yeni format eklemek:**
 
 ```csharp
 public class YeniFormat : OlcuFormati
 {
-    public override bool Eslestir(string olcu) { /* regex match */ }
-    public override OlcuSonucu Degerler()  { /* değerleri döndür */ }
+    public override bool Eslestir(string olcu) { /* regex match */ return false; }
+    public override OlcuSonucu Degerler() { /* return new OlcuSonucu(...) */ }
 }
 
-// OlcuYakalayici constructor'ına uygun pozisyona ekle:
+// OlcuYakalayici constructor'ında doğru pozisyona ekle:
 _formatTipleri = new List<OlcuFormati> { ..., new YeniFormat(), ... };
 ```
 
-### 5.2 LimitCatcherService (`IRSGenerator.Core/Services/LimitCatcher.cs`)
+### 6.2 LimitCatcher (`IRSGenerator.Core/Services/LimitCatcher.cs`)
 
 `OlcuParser` çıktısını `double[2] = [lowerLimit, upperLimit]` formatına normalize eder.
 
-| Format | Lower | Upper |
+| Format türü | Lower | Upper |
 |---|---|---|
-| geometrik, yüzey | `0` | tolerans değeri |
-| minimum | `altLimit` | `double.MaxValue` |
-| maksimum | `0` | üst limit |
-| her ikisi | `altLimit` | `üstLimit` |
-| diş (`"diş"`) | — | `[]` boş döner |
+| Geometrik, yüzey kalitesi | `0` | tolerans değeri |
+| Minimum | `altLimit` | `double.MaxValue` |
+| Maksimum | `0` | üst limit |
+| Her ikisi mevcut | `altLimit` | `üstLimit` |
+| Diş (`"diş"`) | — | `[]` boş array döner |
 
-> `double.MaxValue` frontend'de `"≥ X"` olarak gösterilir (`formatLimits()` fonksiyonu).
+> `double.MaxValue`, frontend `formatLimits()` fonksiyonunda `"≥ X"` olarak gösterilir.
 
-### 5.3 WordOpSheetParser (`IRSGenerator.Core/Services/WordOpSheetParser.cs`)
+`CharactersController` bu servisi çağırarak `dimension` stringinden `LowerLimit` ve `UpperLimit`'i otomatik doldurur.
+
+### 6.3 WordOpSheetParser (`IRSGenerator.Core/Services/WordOpSheetParser.cs`)
 
 Yüklenen `.docx` op-sheet dosyasından `Character[]` üretir.
 
 **Algoritma:**
 1. Tüm tablolarda `"ITEM NO"` + `"DIMENSION"` içeren header satırını bul
-2. Header'dan kolon indekslerini tespit et (ITEM NO, DIMENSION, BADGE, TOOLING vb.)
+2. Header'dan kolon indekslerini tespit et
 3. Her veri satırı için:
-   - Skip kontrolü: `"ITEM NO KC"`, `"INSPECTION"`, `"PAGE NO"` vb. atla
-   - `Regex.Replace(itemNo, @"\s+", "")` — NBSP dahil tüm whitespace'i temizle
-   - `IsLotDimension()` — "VISUAL", "CHECK", "MARKING" içeriyorsa `badge="LOT"` yap
-   - `LimitCatcherService.CatchMeasurement(dimension)` çağır
+   - Skip: `"ITEM NO KC"`, `"INSPECTION"`, `"PAGE NO"` vb. keyword içeriyorsa atla
+   - `Regex.Replace(itemNo, @"\s+", "")` — NBSP dahil tüm whitespace temizlenir
+   - `IsLotDimension()` — `"VISUAL"`, `"CHECK"`, `"MARKING"` içeriyorsa `badge="LOT"` atar
+   - `LimitCatcher.CatchMeasurement(dimension)` çağırarak limitleri doldurur
 
-**Yeni skip keyword eklemek:**
+**Skip keyword listesi** (`SkipItemSuffixes` dizisi):
 ```csharp
-private static readonly string[] SkipItemSuffixes =
-    ["ITEM NO KC", "ITEM NO", "RECORD", "INSPECTION", "INSPECTOR", "/0", "**", "PAGE NO",
-     "YENİ_KEYWORD"];  // buraya ekle
+["ITEM NO KC", "ITEM NO", "RECORD", "INSPECTION", "INSPECTOR", "/0", "**", "PAGE NO"]
 ```
 
-**Yeni LOT keyword eklemek:**
+**LOT keyword listesi** (`LotKeywords` dizisi):
 ```csharp
-private static readonly string[] LotKeywords =
-    ["VISUAL", "CHECK", "MARKING", "SURFACE", "COATING",
-     "YENİ_LOT_KEYWORD"];  // buraya ekle
+["VISUAL", "CHECK", "MARKING", "SURFACE", "COATING"]
 ```
 
-### 5.4 WordReportWriter (`IRSGenerator.Core/Services/WordReportWriter.cs`)
+### 6.4 WordReportWriter (`IRSGenerator.Core/Services/WordReportWriter.cs`)
 
 Muayene verilerinden Word raporu üretir.
 
 **Rapor yapısı:**
-1. **Op-sheet klonu** — orijinal op-sheet'e ACTUAL değerleri yazılır
-2. **Dimensional Results tablosu** — tüm karakterler + son ölçüm
-3. **Non-Conformances bölümü** — yalnızca `"Not Conform"` karakterler + aktif disposition
+1. Op-sheet klonu — orijinal op-sheet'e ACTUAL değerleri yazılır
+2. Dimensional Results tablosu — tüm karakterler + son ölçüm
+3. Non-Conformances bölümü — yalnızca `"Not Conform"` karakterler + aktif disposition
 
-**Rework tarihçesi yönetimi:**
-Aynı `part_label` için birden fazla `NumericPartResult` varsa (örn. rework öncesi/sonrası), raporda en son kayıt gösterilir:
+**Rework tarihçesi:** Aynı `part_label` için birden fazla sonuç varsa en son kayıt gösterilir:
 ```csharp
 .GroupBy(r => r.PartLabel)
 .Select(g => g.OrderByDescending(r => r.CreatedAt ?? DateTime.MinValue).First().Actual)
 ```
 
+### 6.5 NcmSheetGenerator (`IRSGenerator.Core/Services/NcmSheetGenerator.cs`)
+
+NCM disposition sheet'leri için Word şablonlarını doldurur.
+
+**Yöntemi:**
+- `DispositionTemplates/` klasöründen ilgili `.docx` şablonu yükler (in-memory)
+- Şablon içindeki placeholder'ları değiştirir:
+
+| Placeholder | Karşılık |
+|---|---|
+| `[SERIAL NUMBER]` | Parça seri numarası |
+| `[OPER]` | Operasyon numarası |
+| `[C-OP]` | Kök neden operasyonu |
+| `[QTY]` | Etkilenen adet |
+| `[C.CODE]` | Kök neden kodu |
+| `[NONCONFROMANCE PLACE HOLDER]` | NC açıklaması (21 slot: 3 kolon × 7 satır) |
+
+- Tek sheet: `.docx` döner
+- Birden fazla sheet: `.zip` içinde birden fazla `.docx` döner
+- Tamamen in-memory — diske yazılmaz
+
+**Servis kaydı:** `Program.cs` içinde **singleton** olarak kayıtlıdır.
+
 ---
 
-## 6. API Endpoint Referansı
+## 7. API Endpoint Referansı
 
-Tüm endpoint'ler `http://localhost:5297/swagger` adresinde interaktif olarak test edilebilir. Aşağıda önemli endpoint'lerin özeti verilmiştir.
+Tüm endpoint'ler `http://localhost:5297/swagger` adresinden interaktif test edilebilir.
 
 ### JSON Formatı
 
-Tüm request ve response'lar **snake_case** kullanır (`PropertyNamingPolicy = SnakeCaseLower`).
+Tüm istek ve yanıtlar **snake_case** kullanır:
 
 ```json
-// ✅ Doğru
-{ "part_number": "ABC123", "serial_number": "SN001" }
-
-// ❌ Yanlış
-{ "partNumber": "ABC123", "serialNumber": "SN001" }
+{ "part_number": "ABC123", "serial_number": "SN001" }  // ✅ Doğru
+{ "partNumber": "ABC123", "serialNumber": "SN001" }     // ❌ Yanlış
 ```
 
-### Muayene (Inspection)
+### Auth (`/api/auth`)
 
-| Method | URL | Açıklama |
-|---|---|---|
-| GET | `/api/inspections` | Liste; `?status=open`, `?search=` filtreleri |
-| POST | `/api/inspections` | Yeni muayene oluştur |
-| GET | `/api/inspections/{id}` | Detay (defects + dispositions dahil) |
-| PUT | `/api/inspections/{id}` | Güncelle |
-| DELETE | `/api/inspections/{id}` | Sil |
-| POST | `/api/inspections/{id}/parse-op-sheet` | `multipart/form-data`, `file` alanı |
-| POST | `/api/inspections/{id}/complete` | Kapat (tüm NC'ler disposition gerektiriyor) |
-| GET | `/api/inspections/{id}/report` | Word raporu indir (.docx) |
-| GET | `/api/inspections/{id}/report-data` | Rapor verisi JSON olarak |
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| POST | `/login` | Giriş — cookie set edilir | Herkese açık |
+| POST | `/logout` | Çıkış — cookie silinir | Herkes |
+| GET | `/me` | Aktif oturum bilgisi | Herkes |
 
-### Karakter (Character)
+### Projeler (`/api/projects`)
 
-| Method | URL | Açıklama |
-|---|---|---|
-| GET | `/api/characters?inspection_id={id}` | Muayeneye ait karakterler |
-| GET | `/api/characters?irs_project_id={id}` | Proje şablonuna ait karakterler |
-| PUT | `/api/characters/{id}` | Güncelle (inspection_result, note vb.) |
-| GET | `/api/characters/{id}/dispositions` | Karakterin karar geçmişi |
-| POST | `/api/characters/{id}/dispositions` | Yeni karar ekle |
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/` | Liste (`?all=true` ile pasifler dahil) | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST | `/` | Oluştur | AdminOnly |
+| PUT | `/{id}` | Güncelle | AdminOnly |
+| DELETE | `/{id}` | Soft delete (active=false) | AdminOnly |
 
-**inspection_result validasyonu:** Sayısal string (`"17.65"`, `"254.005/254.003"`) veya `"Unidentified"`, `"Conform"`, `"Not Conform"`, `"Pass"`, `"Fail"`, `"Passed"`, `"Failed"` kabul edilir.
+### Muayeneler (`/api/inspections`)
 
-### Disposition
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/` | Liste | Herkes |
+| GET | `/{id}` | Detay (defects + dispositions) | Herkes |
+| POST | `/` | Oluştur | CanWrite |
+| PUT | `/{id}` | Güncelle | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+| GET | `/{id}/ncm` | Bu muayeneye ait NCM verisi | Herkes |
 
-| Method | URL | Açıklama |
-|---|---|---|
-| POST | `/api/dispositions` | Defect'e disposition ekle |
-| GET | `/api/dispositions?defect_id={id}` | Defect'in karar geçmişi |
-| DELETE | `/api/dispositions/{id}` | Kaydı sil |
-| GET | `/api/disposition-types` | Tüm karar tipleri |
-| GET | `/api/disposition-transitions/allowed?current_code=REWORK` | İzin verilen sonraki kararlar |
-| POST | `/api/disposition-transitions/bulk-set` | Geçiş kurallarını toplu güncelle |
+### Karakterler (`/api/characters`)
 
-### Hata Yanıtları
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?inspection_id={id}` | Muayene karakterleri | Herkes |
+| GET | `/?irs_project_id={id}` | Proje şablon karakterleri | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST | `/` | Oluştur | CanWrite |
+| PUT | `/{id}` | Güncelle | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+| GET | `/{id}/dispositions` | Karar geçmişi | Herkes |
+| POST | `/{id}/dispositions` | Yeni karar ekle | CanWrite |
 
-| HTTP Kodu | Durum |
-|---|---|
-| 400 | Validasyon hatası — `{ "detail": "açıklama" }` |
-| 404 | Kaynak bulunamadı |
-| 500 | Beklenmedik sunucu hatası (log'a bakın) |
+**`inspection_result` geçerli değerleri:**
+Sayısal string (`"17.65"`, `"254.005/254.003"`), `"Unidentified"`, `"Conform"`, `"Not Conform"`, `"Pass"`, `"Fail"`, `"Passed"`, `"Failed"`
+
+### Sayısal Sonuçlar (`/api/numeric-part-results`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?character_id={id}` | Liste | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST | `/` | Oluştur | CanWrite |
+| PUT | `/{id}` | Güncelle (`update_reason` zorunlu) | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+| DELETE | `/?character_id={id}` | Toplu sil | CanWrite |
+
+### Kategorik & Bölge Sonuçları
+
+`/api/categorical-part-results` ve `/api/categorical-zone-results` — aynı pattern.
+
+### Kusurlar (`/api/defects`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?inspection_id={id}` | Liste | Herkes |
+| GET | `/{id}` | Detay (child defects + dispositions) | Herkes |
+| POST | `/` | Oluştur | CanWrite |
+| PUT/PATCH | `/{id}` | Güncelle | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+
+### Dispositionlar (`/api/dispositions`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?defect_id={id}` | Defect kararları | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST | `/` | Oluştur | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+
+### Disposition Tipleri (`/api/disposition-types`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/` | Tüm tipler | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST | `/` | Oluştur | AdminOnly |
+| PUT | `/{id}` | Güncelle | AdminOnly |
+| DELETE | `/{id}` | Sil | AdminOnly |
+
+### Disposition Geçişleri (`/api/disposition-transitions`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/` | Tüm geçişler (`?from_code=` ile filtre) | Herkes |
+| GET | `/allowed?current_code={kod}` | İzin verilen sonraki kodlar | Herkes |
+| POST | `/bulk-set` | Bir kod için tüm geçişleri toplu güncelle | AdminOnly |
+
+### NCM (`/api/ncm`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| POST | `/generate` | Disposition sheet üret (.docx veya .zip) | CanWriteNcm |
+| GET | `/templates` | Mevcut şablon dosyaları | AdminOnly |
+| POST | `/templates/{fileName}` | Yeni şablon yükle | AdminOnly |
+
+**`/generate` istek body (`GenerateDispositionSheetDto`):**
+```json
+{
+  "inspection_id": 1,
+  "oper": "OP-10",
+  "cause_oper": "OP-05",
+  "qty": 1,
+  "cause_code_id": 3,
+  "disposition_type_id": 2,
+  "items": [
+    { "description": "Dim. 7 — Ölçü: 17.80 (Max: 17.75)", "is_dimensional": true },
+    { "description": "Yüzey çizigi — Photo #3", "is_dimensional": false }
+  ]
+}
+```
+
+### Kök Neden Kodları (`/api/cause-codes`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?active_only=true` | Liste | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST, PUT, DELETE | `/` | Yönetim | AdminOnly |
+
+### NCM Disposition Tipleri (`/api/ncm-disposition-types`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?active_only=true` | Liste | Herkes |
+| GET | `/{id}` | Detay | Herkes |
+| POST, PUT, DELETE | `/` | Yönetim | AdminOnly |
+
+### Fotoğraflar (`/api/photos`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/?inspection_id={id}` | Muayene fotoğrafları | Herkes |
+| GET | `/?defect_id={id}` | Kusur fotoğrafları | Herkes |
+| GET | `/{id}/file` | Dosyaya yönlendirme | Herkes |
+| POST | `/` | Yükle (multipart/form-data) | CanWrite |
+| PUT | `/{id}/defects` | Kusur eşlemesi güncelle | CanWrite |
+| DELETE | `/{id}` | Sil | CanWrite |
+
+### Kullanıcılar (`/api/users`) — AdminOnly
+
+GET `/`, GET `/{id}`, POST `/`, PUT `/{id}`, DELETE `/{id}` (soft delete — active=false)
+
+### Sistem Konfigürasyonu (`/api/system-config`)
+
+| Method | URL | Açıklama | Yetki |
+|---|---|---|---|
+| GET | `/` | Tüm konfigürasyon | Herkes |
+| GET | `/{key}` | Tek değer | Herkes |
+| PUT | `/` | Güncelle | AdminOnly |
 
 ---
 
-## 7. Frontend Mimarisi
+## 8. Frontend Mimarisi
 
-Frontend, herhangi bir build aracı gerektirmeyen **Vanilla JS ES Modules** tabanlıdır.
+Herhangi bir build aracı gerektirmeyen **Vanilla JS ES Modules** tabanlıdır.
 
 ### Dosya Organizasyonu
 
 ```
 static/js/
-├── api.js          # Tüm HTTP çağrıları — merkezi API katmanı
-├── app.js          # Hash-based router (#/inspections, #/inspection/5 vb.)
-├── session.js      # JWT token saklama/okuma (localStorage)
-├── camera.js       # Kamera erişimi (fotoğraf çekme)
-├── annotator.js    # Fotoğraf üzerine çizim aracı
+├── api.js             # Tüm HTTP çağrıları — merkezi API katmanı
+├── app.js             # Hash-based router (#/inspections, #/inspection/5)
+├── admin.js           # Admin SPA router
 └── pages/
-    ├── inspection-detail.js   # En karmaşık sayfa — dimensional panel
+    ├── dashboard.js
     ├── inspections.js
     ├── inspection-form.js
-    ├── character-detail.js
+    ├── inspection-detail.js   # En karmaşık — dimensional + defekt + disposition panelleri
+    ├── settings.js
     ├── irs-projects.js
-    └── irs-project-detail.js
+    ├── irs-project-detail.js
+    ├── character-detail.js
+    ├── ncm.js
+    ├── ncm-detail.js          # NCM disposition sheet üretme UI
+    ├── nonconformance-descriptions.js
+    ├── analytics.js
+    ├── admin-dashboard.js
+    ├── admin-users.js
+    ├── admin-projects.js
+    ├── admin-defect-types.js
+    ├── admin-defect-fields.js
+    ├── admin-disposition-types.js
+    ├── admin-ncm-disposition-types.js
+    ├── admin-cause-codes.js
+    ├── admin-config.js
+    └── admin-backup.js
 ```
+
+### Kimlik Doğrulama (Frontend)
+
+JWT veya localStorage token **yoktur**. Tarayıcı `qc_auth` cookie'sini otomatik gönderir.
+`api.js` içindeki tüm fetch çağrıları `credentials: 'include'` kullanır.
 
 ### api.js Yapısı
 
-Her API grubu nesne olarak tanımlanmıştır:
 ```javascript
 export const api = {
-  inspections: { list, getById, create, update, delete, parseOpSheet, complete, getReport },
-  characters:  { list, getById, update, listDispositions, addDisposition },
-  dispositions: { create, list, delete },
-  dispositionTypes: { list },
-  dispositionTransitions: { list, getAllowed, bulkSet },
-  numericResults: { list, create, delete },
-  categoricalResults: { list, create, delete },
-  // ...
+  auth:                    { login, logout, me },
+  projects:                { list, getById, create, update, delete },
+  inspections:             { list, getById, create, update, delete, getNcm },
+  characters:              { list, getById, create, update, delete, listDispositions, addDisposition },
+  numericResults:          { list, getById, create, update, delete, deleteByCharacterId },
+  categoricalResults:      { list, getById, create, update, delete, deleteByCharacterId },
+  categoricalZoneResults:  { list, getById, create, update, delete, deleteByCharacterId },
+  defects:                 { list, getById, create, update, delete },
+  defectTypes:             { list, getById, create, update, delete },
+  defectFields:            { list, getById, create, update, delete },
+  dispositions:            { list, getById, create, delete },
+  dispositionTypes:        { list, getById, create, update, delete },
+  dispositionTransitions:  { list, getAllowed, bulkSet },
+  photos:                  { list, getById, upload, updateDefects, delete },
+  systemConfig:            { list, getByKey, update },
+  users:                   { list, getById, create, update, delete },
+  ncm:                     { generate, getTemplates, uploadTemplate },
+  causeCodes:              { list, getById, create, update, delete },
+  ncmDispositionTypes:     { list, getById, create, update, delete },
 };
 ```
 
@@ -448,87 +706,119 @@ export const api = {
 
 ```
 render(id, root)                   # Sayfayı yükle
-loadDimensional()                  # Karakterleri yükle, sol panel + sağ doc viewer
-_activateChar(index)               # Bir karakteri seç
-_renderEntryPanel(c, index)        # Ölçüm giriş panelini çiz (LOT veya numeric)
+loadDimensional()                  # Sol panel karakter listesi + sağ giriş paneli
+_activateChar(index)               # Karakter seç
+_renderEntryPanel(c, index)        # LOT veya numeric giriş paneli
 _saveNumeric(c, rawVal)            # Ölçümü kaydet → API
 _saveLot(c, resultStr)             # LOT sonucunu kaydet → API
-_openDetailModal(c)                # Detay modal → disposition geçmişi
-_openQuickDecisionPanel(c, el)     # 🎯 Karar butonu → inline disposition panel
+_openDetailModal(c)                # Disposition geçmişi modal
+_openQuickDecisionPanel(c, el)     # Inline disposition panel
 _loadDispTypes()                   # DispositionType[] cache
 _loadDispTrans()                   # Transition matrix cache
-allowedNextDecisions(currentCode)  # Mevcut koddan geçiş izni sorgusu
+allowedNextDecisions(currentCode)  # Geçiş izni sorgusu
 ```
 
 ### Yeni Sayfa Eklemek
 
-1. `static/js/pages/yeni-sayfa.js` oluştur, `export async function render(params, root)` tanımla
-2. `app.js` router'ına route ekle:
+1. `static/js/pages/yeni-sayfa.js` oluştur — `export async function render(params, root)` tanımla
+2. `app.js` veya `admin.js` router'ına route ekle:
    ```javascript
    '#/yeni-sayfa': () => import('./pages/yeni-sayfa.js'),
    ```
-3. `index.html` içinde gerekirse sidebar link ekle
+3. Gerekirse `index.html` veya `admin.html` içine sidebar link ekle
 
 ---
 
-## 8. Yeni Özellik Ekleme
+## 9. Yeni Özellik Ekleme
 
-### 8.1 Yeni Entity Ekleme
+### 9.1 Yeni Entity Ekleme — Adım Adım
 
 **Örnek: `WorkOrder` entity eklemek**
 
-1. **Core/Entities/WorkOrder.cs:**
-   ```csharp
-   public class WorkOrder : BaseEntity
-   {
-       public string OrderNo { get; set; } = "";
-       public long InspectionId { get; set; }
-       public Inspection? Inspection { get; set; }
-   }
-   ```
-
-2. **Core/Repositories/IWorkOrderRepository.cs** — interface tanımla
-
-3. **Data/Configurations/WorkOrderConfiguration.cs** — Fluent API config
-
-4. **IRSGeneratorDbContext.cs** — `DbSet<WorkOrder> WorkOrders` ekle
-
-5. **Migration oluştur:**
-   ```bash
-   dotnet ef migrations add AddWorkOrder --project IRSGenerator.Data --startup-project IRSGenerator.API
-   dotnet ef database update --project IRSGenerator.Data --startup-project IRSGenerator.API
-   ```
-
-6. **Data/Repositories/WorkOrderRepository.cs** — implementasyon
-
-7. **Shared/Dtos/WorkOrder/** — CreateDto, ReadDto
-
-8. **API/Controllers/WorkOrdersController.cs** — controller
-
-9. **Program.cs** — DI kaydı:
-   ```csharp
-   builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
-   ```
-
-### 8.2 OlcuParser'a Yeni Format Eklemek
-
-1. `OlcuParser.cs` içinde yeni sınıf yaz (`OlcuFormati`'yi miras al)
-2. `OlcuYakalayici` constructor'ında doğru pozisyona ekle (öncelik sırasına dikkat et)
-3. `LimitCatcherService.CatchMeasurement()` içinde gerekirse özel case ekle
-
-### 8.3 Disposition State Machine'e Yeni Geçiş Eklemek
-
-Swagger veya doğrudan DB üzerinden:
-```sql
-INSERT INTO "DispositionTransitions" ("FromCode", "ToCode", "CreatedAt", "UpdatedAt")
-VALUES ('REWORK', 'YENI_KARAR', NOW(), NOW());
+```
+1. Core/Entities/WorkOrder.cs               → entity sınıfı (BaseEntity miras al)
+2. Core/Repositories/IWorkOrderRepository.cs → interface
+3. Data/Repositories/WorkOrderRepository.cs  → EF Core implementasyon
+4. Data/IRSGeneratorDbContext.cs             → DbSet<WorkOrder> WorkOrders ekle
+5. Migration: dotnet ef migrations add AddWorkOrder --project ... --startup-project ...
+6. dotnet ef database update ...
+7. Shared/Dtos/WorkOrder/WorkOrderCreateDto.cs, WorkOrderReadDto.cs
+8. API/Controllers/WorkOrdersController.cs
+9. API/Extensions/ServiceExtensions.cs       → DI kaydı ekle
+10. wwwroot/static/js/api.js                 → yeni API grubu
+11. wwwroot/static/js/pages/work-orders.js  → sayfa modülü
+12. wwwroot/static/js/app.js                → route ekle
 ```
 
-Ya da `/api/disposition-transitions/bulk-set` endpoint'ini kullan.
+### 9.2 OlcuParser'a Yeni Format Eklemek
+
+```csharp
+// Core/Services/OlcuParser.cs
+public class YeniFormat : OlcuFormati
+{
+    private static readonly Regex _pattern = new Regex(@"...", RegexOptions.IgnoreCase);
+
+    public override bool Eslestir(string olcu) => _pattern.IsMatch(olcu);
+
+    public override OlcuSonucu Degerler()
+    {
+        var m = _pattern.Match(/* son eşleşen string */);
+        return new OlcuSonucu
+        {
+            AltLimit = double.Parse(m.Groups[1].Value),
+            UstLimit = double.Parse(m.Groups[2].Value),
+            Format = "yeni"
+        };
+    }
+}
+
+// OlcuYakalayici constructor'ında uygun pozisyona ekle (öncelik sırasına dikkat!)
+_formatTipleri = new List<OlcuFormati>
+{
+    new IplikToleransi(),
+    // ...
+    new YeniFormat(),      // ← doğru pozisyon
+    // ...
+    new LimitToleransliOlcu()  // ← her zaman en sonda
+};
+```
+
+### 9.3 Yeni NCM Disposition Şablonu Eklemek
+
+1. Word şablonunu `DispositionTemplates/` klasörüne kopyala
+2. Şablon içinde placeholder'ları yerleştir: `[SERIAL NUMBER]`, `[OPER]`, `[C-OP]`, `[QTY]`, `[C.CODE]`, `[NONCONFROMANCE PLACE HOLDER]`
+3. Admin panelden veya API üzerinden yeni `NcmDispositionType` kaydı ekle:
+   ```http
+   POST /api/ncm-disposition-types
+   { "code": "YENİ_KOD", "label": "Etiket", "template_file_name": "YeniSablon.docx" }
+   ```
+
+### 9.4 Disposition State Machine'e Yeni Geçiş Eklemek
+
+Kod değişikliği gerekmez — DB tabanlıdır:
+
+```http
+POST /api/disposition-transitions/bulk-set  [AdminOnly]
+{
+  "from_code": "REWORK",
+  "to_codes": ["CONFORMS", "YENİ_KARAR", "MRB_SUBMITTED"]
+}
+```
+
+### 9.5 Yeni Kullanıcı Rolü veya Politika Eklemek
+
+```csharp
+// API/Extensions/ServiceExtensions.cs
+options.AddPolicy("YeniPolitika", policy =>
+    policy.RequireClaim("role", "yeni_rol"));
+
+// Controller'da kullan:
+[Authorize(Policy = "YeniPolitika")]
+```
 
 ---
 
-## 9. Migration Yönetimi
+## 10. Migration Yönetimi
 
 ```bash
 # Yeni migration ekle
@@ -541,7 +831,7 @@ dotnet ef database update \
   --project IRSGenerator.Data \
   --startup-project IRSGenerator.API
 
-# Son migration'ı geri al (geliştirme sırasında)
+# Son migration'ı geri al (yalnızca geliştirme ortamında)
 dotnet ef migrations remove \
   --project IRSGenerator.Data \
   --startup-project IRSGenerator.API
@@ -551,18 +841,18 @@ dotnet ef database update HedefMigrationIsmi \
   --project IRSGenerator.Data \
   --startup-project IRSGenerator.API
 
-# SQL script üret (prod deployment için)
+# Prod için SQL script üret
 dotnet ef migrations script \
   --project IRSGenerator.Data \
   --startup-project IRSGenerator.API \
   --output ./migration.sql
 ```
 
-> **Prod için:** Doğrudan `dotnet ef database update` yerine üretilen SQL scriptini DBA'ya verin.
+> **Prod için:** Doğrudan `database update` yerine üretilen SQL scriptini DBA'ya verin.
 
 ---
 
-## 10. Test Etme
+## 11. Test Etme
 
 ### Manuel API Testi — Swagger
 
@@ -573,22 +863,24 @@ http://localhost:5297/swagger/index.html
 ### Manuel API Testi — curl
 
 ```bash
-# Muayene oluştur
-curl -X POST http://localhost:5297/api/inspections \
+# Giriş (cookie alınır — -c ile kaydet)
+curl -c cookies.txt -X POST http://localhost:5297/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"part_number":"TEST001","serial_number":"SN001","operation_number":"OP-10","inspector":"Admin","status":"open"}'
+  -d '{"sicil":"6518","password":"sifre"}'
 
-# Op-sheet parse et
-curl -X POST http://localhost:5297/api/inspections/1/parse-op-sheet \
-  -F "file=@/path/to/opsheet.docx"
+# Muayene oluştur
+curl -b cookies.txt -X POST http://localhost:5297/api/inspections \
+  -H "Content-Type: application/json" \
+  -d '{"part_number":"TEST001","serial_number":"SN001","operation_number":"OP-10"}'
 
 # Karakterleri listele
-curl http://localhost:5297/api/characters?inspection_id=1
+curl -b cookies.txt http://localhost:5297/api/characters?inspection_id=1
 
-# Ölçüm gir
-curl -X POST http://localhost:5297/api/numeric-part-results \
+# NCM sheet üret
+curl -b cookies.txt -X POST http://localhost:5297/api/ncm/generate \
   -H "Content-Type: application/json" \
-  -d '{"character_id":1,"actual":"17.65","part_label":"P1"}'
+  -d '{"inspection_id":1,"oper":"OP-10","cause_oper":"OP-05","qty":1,"cause_code_id":1,"disposition_type_id":1,"items":[{"description":"Test NC","is_dimensional":true}]}' \
+  --output sheet.docx
 ```
 
 ### OlcuParser Test Senaryoları
@@ -597,51 +889,50 @@ curl -X POST http://localhost:5297/api/numeric-part-results \
 var parser = new OlcuYakalayici();
 
 // Eşit tolerans
-parser.Isle("254 ± 0.01")          // lower=253.99, upper=254.01
+Assert.Equal(253.99, parser.Isle("254 ± 0.01").AltLimit);
 
-// Artı-eksi (unilateral)
-parser.Isle("17.75 +0 / -0.15")   // lower=17.60, upper=17.75
+// Artı-eksi
+Assert.Equal(17.60, parser.Isle("17.75 +0 / -0.15").AltLimit);
 
-// Diş (limit olmamalı)
-parser.Isle("1/8 NPT")            // Format="diş", AltLimit=null, UstLimit=null
-parser.Isle("M8 x 1.25")         // Format="diş"
-
-// Surface profile
-parser.Isle("[SP | 0.15]")        // lower=0, upper=0.15
+// Diş — limit beklenmez
+Assert.Equal("diş", parser.Isle("1/8 NPT").Format);
 
 // Minimum
-parser.Isle("0.5 MIN")            // lower=0.5, upper=double.MaxValue
+Assert.Equal(double.MaxValue, parser.Isle("0.5 MIN").UstLimit);
 ```
 
 ---
 
-## 11. Yaygın Bakım Görevleri
+## 12. Yaygın Bakım Görevleri
 
-### 11.1 Yeni Disposition Tipi Eklemek
+### 12.1 Yeni Kullanıcı Eklemek
 
+Admin paneli: `/admin.html` → Kullanıcılar → Yeni Kullanıcı
+
+veya API:
+```http
+POST /api/users  [AdminOnly]
+{ "employee_id": "12345", "display_name": "Ad Soyad", "role": "inspector", "password": "sifre" }
+```
+
+### 12.2 Yeni Disposition Tipi Eklemek
+
+Admin paneli: `/admin.html` → Disposition Tipleri → Yeni
+
+veya SQL:
 ```sql
 INSERT INTO "DispositionTypes"
   ("Code", "Label", "CssClass", "IsNeutralizing", "IsInitial", "SortOrder", "Active", "CreatedAt", "UpdatedAt")
 VALUES
-  ('YENİ_KOD', 'Türkçe Etiket', 'disp-custom', false, true, 99, true, NOW(), NOW());
-
--- İzin verilen geçişleri ekle
-INSERT INTO "DispositionTransitions" ("FromCode", "ToCode", "CreatedAt", "UpdatedAt")
-VALUES ('REWORK', 'YENİ_KOD', NOW(), NOW());
+  ('YENİ_KOD', 'Etiket', 'disp-custom', false, true, 99, true, NOW(), NOW());
 ```
 
-### 11.2 Seeded Verileri Güncellemek
+Ardından geçiş kurallarını `/api/disposition-transitions/bulk-set` ile tanımlayın.
 
-`Program.cs` içinde `SeedDataAsync()` metodu bulunur. Seed verisini değiştirip migration yerine doğrudan çalıştırabilirsiniz:
-```bash
-dotnet run --project IRSGenerator.API -- --seed-only
-```
-*(Bu flag mevcut değilse, SeedDataAsync içinde idempotent kontrol ekleyerek her başlatmada çalışır.)*
+### 12.3 Log İnceleme
 
-### 11.3 Log İnceleme
-
-Varsayılan log seviyesi `Information`. EF Core sorgu loglarını görmek için `appsettings.json`:
 ```json
+// appsettings.json — EF Core sorgu loglarını görmek için:
 {
   "Logging": {
     "LogLevel": {
@@ -651,42 +942,43 @@ Varsayılan log seviyesi `Information`. EF Core sorgu loglarını görmek için 
 }
 ```
 
-### 11.4 Veritabanı Bakımı
+### 12.4 Veritabanı Bakımı
 
 ```sql
--- Tamamlanmış eski inspection'ları arşivle (örnek)
+-- Tamamlanmış eski muayeneler
 SELECT id, part_number, serial_number, created_at
 FROM "Inspections"
 WHERE status = 'completed' AND created_at < NOW() - INTERVAL '1 year';
 
--- NumericPartResult boyutu izle
+-- NumericPartResult boyutu
 SELECT COUNT(*), pg_size_pretty(pg_total_relation_size('"NumericPartResults"'))
 FROM "NumericPartResults";
 ```
 
 ---
 
-## 12. Bilinen Kısıtlamalar ve Gelecek Geliştirmeler
+## 13. Bilinen Kısıtlamalar ve Önerilen Geliştirmeler
 
 ### Mevcut Kısıtlamalar
 
 | Alan | Kısıtlama |
 |---|---|
-| Auth | JWT token refresh yok — her 1 saatte (varsayılan) yeniden giriş gerekebilir |
-| Op-sheet parser | Sadece `.docx` desteklenir, `.doc` veya `.xls` desteklenmez |
-| Fotoğraf | Boyut sınırı ayarlanmamış, büyük yüklemeler disk doldurabilir |
-| Real-time | WebSocket yok — aynı muayeneyi düzenleyen iki kişi çakışabilir |
-| Raporlama | Yalnızca Word formatı — Excel veya PDF formatı yok |
-| `appsettings.json` | DB şifresi plain text — production'da env variable kullanılmalı |
+| Şifre hash | SHA256 hex, salt yok — production'da bcrypt/Argon2 kullanılmalı |
+| Op-sheet parser | Yalnızca `.docx` desteklenir; `.doc` veya `.xls` desteklenmez |
+| Fotoğraf boyutu | Sınır ayarlanmamış — büyük yüklemeler diski doldurabilir |
+| Real-time | WebSocket yok — aynı muayenede çakışma riski |
+| Raporlama | Yalnızca Word formatı — Excel veya PDF desteği yok |
+| Connection string | `appsettings.json` içinde — production'da environment variable kullanılmalı |
+| DTO mapping | AutoMapper yok — controller'larda manuel mapping |
 
 ### Önerilen Geliştirmeler
 
+- [ ] Şifre hash'ini bcrypt veya Argon2 ile değiştir
 - [ ] Excel raporu export (`ClosedXML` veya `EPPlus` ile)
+- [ ] Fotoğraf boyutu limiti ve otomatik küçültme (önizleme thumbnail)
 - [ ] Gerçek zamanlı bildirim (SignalR) — aynı inspection'da çalışan kullanıcılar için
-- [ ] Fotoğraf boyutu limiti ve otomatik küçültme
-- [ ] JWT refresh token mekanizması
-- [ ] Role tabanlı yetkilendirme (`[Authorize(Roles = "inspector")]`)
-- [ ] Audit log — kimin ne zaman ne değiştirdiği
-- [ ] `appsettings.Example.json` şablonu + `appsettings.json` gitignore'a alma
-- [ ] Integration testleri (EF Core InMemory veya Testcontainers ile)
-- [ ] Op-sheet önizleme için PDF dönüşümü
+- [ ] Op-sheet önizleme — PDF dönüşümü
+- [ ] `appsettings.Example.json` şablonu oluştur + gerçek `appsettings.json`'ı `.gitignore`'a al
+- [ ] Integration testleri (EF Core Testcontainers ile)
+- [ ] Audit log — kimin ne zaman ne değiştirdiği (ayrı tablo)
+- [ ] Fotoğraf depolama NAS/S3 entegrasyonu

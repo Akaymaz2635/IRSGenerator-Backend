@@ -28,11 +28,6 @@ export async function inspectionFormPage(id) {
     `<option value="${p.id}" ${v.project_id == p.id ? 'selected' : ''}>${p.name}</option>`
   ).join('');
 
-  const statusOptions = ['open', 'completed', 'rejected'].map((s) => {
-    const labels = { open: 'Open', completed: 'Completed', rejected: 'Rejected' };
-    return `<option value="${s}" ${v.status === s ? 'selected' : ''}>${labels[s]}</option>`;
-  }).join('');
-
   root.innerHTML = `
     <a href="${isEdit ? `#/inspections/${id}` : '#/inspections'}" class="back-link">&#8592; Geri</a>
 
@@ -75,13 +70,6 @@ export async function inspectionFormPage(id) {
               value="${v.inspector || (!isEdit ? session.getName() : '')}" placeholder="Full name" />
           </div>
 
-          <div class="form-group">
-            <label for="status">Status</label>
-            <select class="form-select" id="status" name="status">
-              ${statusOptions}
-            </select>
-          </div>
-
           ${!isEdit ? `
           <div class="form-group">
             <label for="op_sheet_file">Op Sheet (.docx) — If Dimensional Measurement Will Be Done</label>
@@ -121,7 +109,7 @@ export async function inspectionFormPage(id) {
       serial_number:    fd.get('serial_number')     || null,
       operation_number: fd.get('operation_number')  || null,
       inspector:        fd.get('inspector')          || null,
-      status:           fd.get('status')             || 'open',
+      status:           'open',
       notes:            fd.get('notes')              || null,
     };
 

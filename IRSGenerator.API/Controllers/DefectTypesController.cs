@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/defect-types")]
 [ApiController]
+[Authorize]
 public class DefectTypesController : ControllerBase
 {
     private readonly IDefectTypeRepository _repo;
@@ -52,6 +54,7 @@ public class DefectTypesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<DefectTypeReadDto>> Create([FromBody] DefectTypeCreateDto dto)
     {
         var entity = new DefectType
@@ -74,6 +77,7 @@ public class DefectTypesController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] DefectTypeUpdateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -88,6 +92,7 @@ public class DefectTypesController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);

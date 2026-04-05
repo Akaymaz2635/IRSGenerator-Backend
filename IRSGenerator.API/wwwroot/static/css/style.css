@@ -2038,3 +2038,14 @@ tr.row-high-metal td {
 #dm-notes { width:100%; border:1px solid var(--border); border-radius:6px;
   padding:8px; background:var(--bg-primary); color:var(--text-primary);
   font-size:.9rem; resize:vertical; box-sizing:border-box; }
+
+/* ── NCM Page ──────────────────────────────────────────────────────────── */
+.nc-desc-text { font-size: 13px; line-height: 1.5; word-break: break-word; }
+.ncm-selected-row { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.ncm-done-row     { opacity: 0.5; text-decoration: line-through; }
+.ncm-nc-row       { cursor: pointer; }
+.ncm-nc-row:hover { background: var(--bg-secondary); }
+.alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; }
+.alert-success { background: color-mix(in srgb, var(--success) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, transparent);
+  color: var(--text-primary); }

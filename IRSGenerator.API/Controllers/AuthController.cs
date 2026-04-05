@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Repositories;
 using IRSGenerator.Shared.Dtos.Auth;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -40,16 +43,46 @@ public class AuthController : ControllerBase
                 return Unauthorized(new { detail = "Sicil numarası veya şifre hatalı." });
         }
 
+        // HttpOnly cookie oluştur — frontend localStorage yerine bu cookie kullanılır
+        var claims = new List<Claim>
+        {
+            new("userId", user.Id.ToString()),
+            new("role",   user.Role),
+            new(ClaimTypes.Name, user.DisplayName ?? user.EmployeeId),
+        };
+        var identity  = new ClaimsIdentity(claims, "AppCookie");
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext.SignInAsync("AppCookie", principal);
+
         return Ok(new LoginResponseDto
         {
             IsAdmin = user.Role == "admin",
             User = new LoginUserDto
             {
-                Id = user.Id,
+                Id   = user.Id,
                 Name = user.DisplayName,
                 Role = user.Role
             }
         });
+    }
+
+    // POST /api/auth/logout
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync("AppCookie");
+        return NoContent();
+    }
+
+    // GET /api/auth/me  — oturum bilgisini döner
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult Me()
+    {
+        var userId = User.FindFirst("userId")?.Value;
+        var role   = User.FindFirst("role")?.Value;
+        var name   = User.FindFirst(ClaimTypes.Name)?.Value;
+        return Ok(new { user_id = userId, role, name });
     }
 
     internal static string HashPassword(string password)

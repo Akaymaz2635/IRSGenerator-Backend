@@ -1,0 +1,91 @@
+### WP-09 — Sistem Konfigürasyonu & Proje Yönetimi
+### Özellik #41, #42, #43
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ─── TC-09.1 — Sistem Konfigürasyonu Güncelleme ──────────────────────────────
+# Beklenen: 204 NoContent veya 200 OK
+PUT {{baseUrl}}/api/system-config
+Content-Type: {{contentType}}
+
+{
+  "photo_root_folder": "/photos/",
+  "report_root_folder": "/reports/",
+  "backup_root_folder": "/backups/"
+}
+
+###
+
+# Doğrulama: güncellenen değerler döndü
+GET {{baseUrl}}/api/system-config
+
+###
+
+# ─── TC-09.2 — VisualProject Oluşturma ───────────────────────────────────────
+# Beklenen: 201 Created
+POST {{baseUrl}}/api/projects
+Content-Type: {{contentType}}
+
+{
+  "name": "Test Proje WP-09"
+}
+
+###
+
+# ─── TC-09.2 — VisualProject Silme (Soft Delete) ─────────────────────────────
+# Beklenen: 204 NoContent, active=false
+DELETE {{baseUrl}}/api/projects/1
+
+###
+
+# active=false → listede YOK
+GET {{baseUrl}}/api/projects
+
+###
+
+# all=true → listede VAR
+GET {{baseUrl}}/api/projects?all=true
+
+###
+
+# ─── TC-09.3 — Timestamp Kontrolü ────────────────────────────────────────────
+# Adım 1: Yeni hata oluştur
+POST {{baseUrl}}/api/defects
+Content-Type: {{contentType}}
+
+{
+  "inspection_id": 1,
+  "defect_type_id": 1,
+  "depth": 0.1
+}
+
+###
+
+# Adım 2: created_at ve updated_at dolu, created_at ≈ şimdiki zaman (UTC)
+GET {{baseUrl}}/api/defects/1
+
+###
+
+# Adım 3: Güncelle
+PUT {{baseUrl}}/api/defects/1
+Content-Type: {{contentType}}
+
+{
+  "depth": 0.9
+}
+
+###
+
+# Adım 4: updated_at > created_at doğrula
+GET {{baseUrl}}/api/defects/1
+
+###
+
+# ─── Yardımcı: Tüm projeler ──────────────────────────────────────────────────
+GET {{baseUrl}}/api/projects
+
+###
+
+# ─── Yardımcı: Tek proje detayı ──────────────────────────────────────────────
+GET {{baseUrl}}/api/projects/1

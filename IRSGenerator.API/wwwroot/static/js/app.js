@@ -7,8 +7,11 @@ import { settingsPage }           from './pages/settings.js';
 import { analyticsPage }          from './pages/analytics.js';
 import { irsProjectsPage }        from './pages/irs-projects.js';
 import { irsProjectDetailPage }   from './pages/irs-project-detail.js';
-import { characterDetailPage }    from './pages/character-detail.js';
-import { session }                from './session.js';
+import { characterDetailPage }            from './pages/character-detail.js';
+import { nonconformanceDescriptionsPage } from './pages/nonconformance-descriptions.js';
+import { ncmPage }                        from './pages/ncm.js';
+import { ncmDetailPage }                  from './pages/ncm-detail.js';
+import { session }                        from './session.js';
 
 // ── Routes ─────────────────────────────────────────────────
 register('/', dashboardPage);
@@ -16,11 +19,14 @@ register('/inspections', inspectionsPage);
 register('/inspections/new', () => inspectionFormPage(null));
 register('/inspections/:id/edit', ({ id }) => inspectionFormPage(Number(id)));
 register('/inspections/:id', ({ id }) => inspectionDetailPage(Number(id)));
+register('/inspections/:id/ncr', ({ id }) => nonconformanceDescriptionsPage(Number(id)));
 register('/settings', settingsPage);
 register('/analytics', analyticsPage);
 register('/irs', irsProjectsPage);
 register('/irs/:id', ({ id }) => irsProjectDetailPage(Number(id)));
 register('/irs/:projectId/characters/:id', ({ projectId, id }) => characterDetailPage(Number(projectId), Number(id)));
+register('/ncm', ncmPage);
+register('/ncm/:id', ({ id }) => ncmDetailPage(Number(id)));
 
 // ── Active nav highlighting ─────────────────────────────────
 function updateNav() {
@@ -33,12 +39,15 @@ function updateNav() {
     if (route === 'settings')     active = hash.startsWith('/settings');
     if (route === 'analytics')    active = hash.startsWith('/analytics');
     if (route === 'irs')          active = hash.startsWith('/irs');
+    if (route === 'ncm')          active = hash.startsWith('/ncm');
     link.classList.toggle('active', active);
   });
 
   // Rol tabanlı nav görünürlüğü
   const settingsItem  = document.getElementById('nav-item-settings');
+  const ncmItem       = document.getElementById('nav-item-ncm');
   if (settingsItem)  settingsItem.style.display = session.isAdmin() ? '' : 'none';
+  if (ncmItem)       ncmItem.style.display       = (session.getRole() === 'engineer' || session.getRole() === 'admin') ? '' : 'none';
 }
 window.addEventListener('hashchange', updateNav);
 updateNav();
@@ -225,7 +234,7 @@ function openLoginModal(allowClose = false) {
       <div class="form-group" id="login-password-group">
         <label>Şifre *</label>
         <input type="password" id="login-password" class="form-input"
-               placeholder="Şifrenizi girin" autocomplete="current-password" />
+               placeholder="Şifrenizi girin" autocomplete="off" />
       </div>
       <p id="login-error" class="text-danger" style="display:none;margin-top:6px;font-size:13px;"></p>
     </div>

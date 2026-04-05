@@ -1,0 +1,34 @@
+### WP-07 — Rapor Üretimi
+### Özellik #6, #39
+
+@baseUrl = https://localhost:7164
+
+# ─── TC-07.1 — Word Rapor (Basic) ────────────────────────────────────────────
+# Beklenen: 200, Content-Type=application/vnd.openxmlformats-officedocument...
+# Kontrol: İndirilen .docx açılıyor, muayene özeti içeriyor
+# {id} yerine tamamlanmış bir muayene id'si girin
+GET {{baseUrl}}/api/inspections/1/report?type=basic
+
+###
+
+# ─── TC-07.2 — Word Rapor (Full) ─────────────────────────────────────────────
+# Beklenen: Hata listesi, fotoğraflar, disposition geçmişi içeriyor
+GET {{baseUrl}}/api/inspections/1/report?type=full
+
+###
+
+# ─── TC-07.3 — Report Data API (JSON) ────────────────────────────────────────
+# Beklenen: JSON — defect_summary, character_summary, photos alanları dolu
+GET {{baseUrl}}/api/inspections/1/report-data
+
+###
+
+# ─── Yardımcı: Muayene detayı (rapor içeriğiyle karşılaştırın) ───────────────
+GET {{baseUrl}}/api/inspections/1
+
+###
+
+# ─── Not: PDF Export ─────────────────────────────────────────────────────────
+# Mevcut sistemde PDF doğrudan desteklenmemektedir (Gap F4).
+# Geçici çözüm: rapor.html?id={id} → Ctrl+P → PDF kaydet
+# URL: {{baseUrl}}/report.html?id=1

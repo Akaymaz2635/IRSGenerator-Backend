@@ -48,6 +48,12 @@ namespace IRSGenerator.Data.Migrations
                     b.Property<bool>("IsConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("UpdateNote")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UpdateReason")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -108,6 +114,55 @@ namespace IRSGenerator.Data.Migrations
                     b.ToTable("CategoricalZoneResults", (string)null);
                 });
 
+            modelBuilder.Entity("IRSGenerator.Core.Entities.CauseCode", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("CreatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("UpdatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("CauseCodes");
+                });
+
             modelBuilder.Entity("IRSGenerator.Core.Entities.Character", b =>
                 {
                     b.Property<long>("Id")
@@ -147,15 +202,15 @@ namespace IRSGenerator.Data.Migrations
                         .HasColumnType("text")
                         .HasDefaultValue("Unidentified");
 
-                    b.Property<string>("Note")
-                        .HasColumnType("text");
-
                     b.Property<string>("ItemNo")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<double>("LowerLimit")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
 
                     b.Property<string>("Remarks")
                         .HasColumnType("text");
@@ -176,9 +231,9 @@ namespace IRSGenerator.Data.Migrations
 
                     b.HasIndex("CreatedById");
 
-                    b.HasIndex("InspectionId");
-
                     b.HasIndex("IRSProjectId");
+
+                    b.HasIndex("InspectionId");
 
                     b.HasIndex("UpdatedById");
 
@@ -382,6 +437,9 @@ namespace IRSGenerator.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("CharacterId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("ConcessionNo")
                         .HasColumnType("text");
 
@@ -396,9 +454,6 @@ namespace IRSGenerator.Data.Migrations
 
                     b.Property<DateTime?>("DecidedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("CharacterId")
-                        .HasColumnType("bigint");
 
                     b.Property<string>("Decision")
                         .IsRequired()
@@ -507,471 +562,471 @@ namespace IRSGenerator.Data.Migrations
                         new
                         {
                             Id = 1L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "USE_AS_IS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 2L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "KABUL_RESIM",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 3L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "REWORK",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 4L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 5L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "CTP_RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 6L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "MRB_SUBMITTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 7L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "MRB_CTP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 8L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "VOID",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 9L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "REPAIR",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 10L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             ToCode = "SCRAP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 11L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "CONFORMS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 12L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "USE_AS_IS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 13L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "KABUL_RESIM",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 14L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "REWORK",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 15L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 16L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "CTP_RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 17L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "MRB_SUBMITTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 18L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "MRB_CTP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 19L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "VOID",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 20L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "REPAIR",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 21L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "REWORK",
                             ToCode = "SCRAP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 22L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "CONFORMS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 23L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "USE_AS_IS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 24L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "KABUL_RESIM",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 25L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "REWORK",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 26L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 27L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "CTP_RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 28L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "MRB_SUBMITTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 29L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "MRB_CTP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 30L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "VOID",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 31L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "REPAIR",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 32L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "RE_INSPECT",
                             ToCode = "SCRAP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 33L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "CONFORMS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 34L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "USE_AS_IS",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 35L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "KABUL_RESIM",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 36L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "REWORK",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 37L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 38L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "CTP_RE_INSPECT",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 39L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "MRB_SUBMITTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 40L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "MRB_CTP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 41L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "VOID",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 42L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "REPAIR",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 43L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "CTP_RE_INSPECT",
                             ToCode = "SCRAP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 44L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "MRB_SUBMITTED",
                             ToCode = "MRB_CTP",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 45L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "MRB_SUBMITTED",
                             ToCode = "MRB_ACCEPTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 46L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "MRB_SUBMITTED",
                             ToCode = "MRB_REJECTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 47L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "MRB_CTP",
                             ToCode = "MRB_ACCEPTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 48L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             FromCode = "MRB_CTP",
                             ToCode = "MRB_REJECTED",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         });
                 });
@@ -1043,14 +1098,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 1L,
                             Active = true,
                             Code = "USE_AS_IS",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-accepted",
                             IsInitial = true,
                             IsNeutralizing = true,
                             Label = "Kabul (Spec)",
                             SortOrder = 1,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1058,14 +1113,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 2L,
                             Active = true,
                             Code = "KABUL_RESIM",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-accepted",
                             IsInitial = true,
                             IsNeutralizing = true,
                             Label = "Kabul (Resim)",
                             SortOrder = 2,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1073,14 +1128,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 3L,
                             Active = true,
                             Code = "CONFORMS",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-conforms",
                             IsInitial = false,
                             IsNeutralizing = true,
                             Label = "Uygun (Inspector)",
                             SortOrder = 3,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1088,14 +1143,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 4L,
                             Active = true,
                             Code = "REWORK",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-rework",
                             IsInitial = true,
                             IsNeutralizing = false,
                             Label = "Rework",
                             SortOrder = 4,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1103,14 +1158,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 5L,
                             Active = true,
                             Code = "RE_INSPECT",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-re-inspect",
                             IsInitial = true,
                             IsNeutralizing = false,
                             Label = "Yeniden İnceleme",
                             SortOrder = 5,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1118,14 +1173,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 6L,
                             Active = true,
                             Code = "CTP_RE_INSPECT",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-mrb-ctp",
                             IsInitial = true,
                             IsNeutralizing = false,
                             Label = "CTP — Sonraki Op. Yeniden İnceleme",
                             SortOrder = 6,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1133,14 +1188,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 7L,
                             Active = true,
                             Code = "MRB_SUBMITTED",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-mrb-submitted",
                             IsInitial = true,
                             IsNeutralizing = false,
                             Label = "MRB Gönderildi",
                             SortOrder = 7,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1148,14 +1203,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 8L,
                             Active = true,
                             Code = "MRB_CTP",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-mrb-ctp",
                             IsInitial = true,
                             IsNeutralizing = false,
                             Label = "CTP — MRB (Devam)",
                             SortOrder = 8,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1163,14 +1218,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 9L,
                             Active = true,
                             Code = "MRB_ACCEPTED",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-mrb-accepted",
                             IsInitial = false,
                             IsNeutralizing = true,
                             Label = "MRB Kabul",
                             SortOrder = 9,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1178,14 +1233,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 10L,
                             Active = true,
                             Code = "MRB_REJECTED",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-mrb-rejected",
                             IsInitial = false,
                             IsNeutralizing = true,
                             Label = "MRB Ret",
                             SortOrder = 10,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1193,14 +1248,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 11L,
                             Active = true,
                             Code = "VOID",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-void",
                             IsInitial = true,
                             IsNeutralizing = true,
                             Label = "Void",
                             SortOrder = 11,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1208,14 +1263,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 12L,
                             Active = true,
                             Code = "REPAIR",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-repair",
                             IsInitial = true,
                             IsNeutralizing = true,
                             Label = "Repair",
                             SortOrder = 12,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
@@ -1223,14 +1278,14 @@ namespace IRSGenerator.Data.Migrations
                             Id = 13L,
                             Active = true,
                             Code = "SCRAP",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             CssClass = "disp-scrap",
                             IsInitial = true,
                             IsNeutralizing = true,
                             Label = "Scrap",
                             SortOrder = 13,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         });
                 });
@@ -1360,6 +1415,63 @@ namespace IRSGenerator.Data.Migrations
                     b.ToTable("Inspections");
                 });
 
+            modelBuilder.Entity("IRSGenerator.Core.Entities.NcmDispositionType", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("CreatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TemplateFileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("UpdatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("NcmDispositionTypes");
+                });
+
             modelBuilder.Entity("IRSGenerator.Core.Entities.NumericPartResult", b =>
                 {
                     b.Property<long>("Id")
@@ -1370,11 +1482,6 @@ namespace IRSGenerator.Data.Migrations
 
                     b.Property<string>("Actual")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("");
-
-                    b.Property<string>("PartLabel")
                         .HasColumnType("text");
 
                     b.Property<long>("CharacterId")
@@ -1385,6 +1492,15 @@ namespace IRSGenerator.Data.Migrations
 
                     b.Property<long?>("CreatedById")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("PartLabel")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UpdateNote")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UpdateReason")
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1446,120 +1562,120 @@ namespace IRSGenerator.Data.Migrations
                         {
                             Id = 1L,
                             Code = "irsproject.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[IRSProject] write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 2L,
                             Code = "character.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[Character] write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 3L,
                             Code = "categoricalpartresult.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[CategoricalPartResult] write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 4L,
                             Code = "categoricalzoneresult.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[CategoricalZoneResult] write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 5L,
                             Code = "numericalpartresult.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[NumericalPartResult] write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 6L,
                             Code = "irsproject.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[IRSProject] read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 7L,
                             Code = "character.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[Character] read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 8L,
                             Code = "categoricalpartresult.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[CategoricalPartResult] read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 9L,
                             Code = "categoricalzoneresult.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[CategoricalZoneResult] read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 10L,
                             Code = "numericalpartresult.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "[NumericalPartResult] read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 11L,
                             Code = "authorization.write",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "Authorization write permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 12L,
                             Code = "authorization.read",
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Description = "Authorization read permission.",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         });
                 });
@@ -1663,28 +1779,28 @@ namespace IRSGenerator.Data.Migrations
                         new
                         {
                             Id = 1L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Name = "Admin",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 2L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Name = "UserWriter",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 3L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             Name = "UserReader",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         });
                 });
@@ -1731,171 +1847,171 @@ namespace IRSGenerator.Data.Migrations
                         new
                         {
                             Id = 3L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 1L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 4L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 2L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 5L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 3L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 6L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 4L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 7L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 5L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 1L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 11L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 2L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 12L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 8L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 1L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 9L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 2L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 10L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 3L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 11L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 4L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 12L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 5L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 13L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 6L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 14L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 7L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 15L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 8L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 16L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 9L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         },
                         new
                         {
                             Id = 17L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             PermissionId = 10L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L
                         });
                 });
@@ -1963,14 +2079,14 @@ namespace IRSGenerator.Data.Migrations
                         {
                             Id = 1L,
                             Active = true,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             DisplayName = "Erdem.Demirtaş",
                             EmployeeId = "6518",
                             FirstName = "Erdem",
                             LastName = "Demirtaş",
                             Role = "inspector",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             WindowsAccount = "TEIDOM\\k6518"
                         },
@@ -1978,14 +2094,14 @@ namespace IRSGenerator.Data.Migrations
                         {
                             Id = 2L,
                             Active = true,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             DisplayName = "Uras.Erken",
                             EmployeeId = "5956",
                             FirstName = "Uras",
                             LastName = "Erken",
                             Role = "inspector",
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             WindowsAccount = "TEIDOM\\k5956"
                         });
@@ -2033,60 +2149,60 @@ namespace IRSGenerator.Data.Migrations
                         new
                         {
                             Id = 1L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 1L
                         },
                         new
                         {
                             Id = 2L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 1L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 2L
                         },
                         new
                         {
                             Id = 3L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 1L
                         },
                         new
                         {
                             Id = 4L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 2L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 2L
                         },
                         new
                         {
                             Id = 5L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 1L
                         },
                         new
                         {
                             Id = 6L,
-                            CreatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            CreatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             CreatedById = 1L,
                             RoleId = 3L,
-                            UpdatedAt = new DateTime(2026, 3, 28, 11, 25, 45, 136, DateTimeKind.Utc).AddTicks(7446),
+                            UpdatedAt = new DateTime(2026, 4, 4, 21, 35, 53, 981, DateTimeKind.Utc).AddTicks(9216),
                             UpdatedById = 1L,
                             UserId = 2L
                         });
@@ -2227,6 +2343,21 @@ namespace IRSGenerator.Data.Migrations
                     b.Navigation("UpdatedByUser");
                 });
 
+            modelBuilder.Entity("IRSGenerator.Core.Entities.CauseCode", b =>
+                {
+                    b.HasOne("IRSGenerator.Core.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
             modelBuilder.Entity("IRSGenerator.Core.Entities.Character", b =>
                 {
                     b.HasOne("IRSGenerator.Core.Entities.User", "CreatedByUser")
@@ -2234,14 +2365,14 @@ namespace IRSGenerator.Data.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("IRSGenerator.Core.Entities.Inspection", "Inspection")
-                        .WithMany()
-                        .HasForeignKey("InspectionId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("IRSGenerator.Core.Entities.IRSProject", "IRSProject")
                         .WithMany("Characters")
                         .HasForeignKey("IRSProjectId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("IRSGenerator.Core.Entities.Inspection", "Inspection")
+                        .WithMany()
+                        .HasForeignKey("InspectionId")
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
@@ -2251,9 +2382,9 @@ namespace IRSGenerator.Data.Migrations
 
                     b.Navigation("CreatedByUser");
 
-                    b.Navigation("Inspection");
-
                     b.Navigation("IRSProject");
+
+                    b.Navigation("Inspection");
 
                     b.Navigation("UpdatedByUser");
                 });
@@ -2339,8 +2470,7 @@ namespace IRSGenerator.Data.Migrations
                     b.HasOne("IRSGenerator.Core.Entities.Character", "Character")
                         .WithMany("Dispositions")
                         .HasForeignKey("CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired(false);
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("IRSGenerator.Core.Entities.User", "CreatedByUser")
                         .WithMany()
@@ -2348,9 +2478,7 @@ namespace IRSGenerator.Data.Migrations
 
                     b.HasOne("IRSGenerator.Core.Entities.Defect", "Defect")
                         .WithMany("Dispositions")
-                        .HasForeignKey("DefectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired(false);
+                        .HasForeignKey("DefectId");
 
                     b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
                         .WithMany()
@@ -2471,6 +2599,21 @@ namespace IRSGenerator.Data.Migrations
                     b.Navigation("UpdatedByUser");
 
                     b.Navigation("VisualProject");
+                });
+
+            modelBuilder.Entity("IRSGenerator.Core.Entities.NcmDispositionType", b =>
+                {
+                    b.HasOne("IRSGenerator.Core.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("IRSGenerator.Core.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("IRSGenerator.Core.Entities.NumericPartResult", b =>

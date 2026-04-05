@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -10,6 +11,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/characters")]
 [ApiController]
+[Authorize]
 public class CharactersController : ControllerBase
 {
     private readonly ICharacterRepository _repo;
@@ -67,6 +69,7 @@ public class CharactersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<CharacterReadDto>> Create([FromBody] CharacterCreateDto dto)
     {
         var limits = LimitCatcherService.CatchMeasurement(dto.Dimension);
@@ -91,6 +94,7 @@ public class CharactersController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] CharacterUpdateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -125,6 +129,7 @@ public class CharactersController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -143,19 +148,21 @@ public class CharactersController : ControllerBase
         var disps = await _dispRepo.GetByCharacterIdAsync(id);
         return Ok(disps.Select(d => new
         {
-            id          = d.Id,
-            character_id = d.CharacterId,
-            decision    = d.Decision,
-            entered_by  = d.EnteredBy,
-            decided_at  = d.DecidedAt,
-            note        = d.Note,
-            spec_ref    = d.SpecRef,
-            created_at  = d.CreatedAt,
+            id                    = d.Id,
+            character_id          = d.CharacterId,
+            decision              = d.Decision,
+            entered_by            = d.EnteredBy,
+            decided_at            = d.DecidedAt,
+            note                  = d.Note,
+            spec_ref              = d.SpecRef,
+            created_at            = d.CreatedAt,
+            measurements_snapshot = d.MeasurementsSnapshot,
         }));
     }
 
     // ── POST /api/characters/{id}/dispositions ────────────────────────────────
     [HttpPost("{id:long}/dispositions")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult> AddDisposition(long id, [FromBody] DispositionCreateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -170,14 +177,15 @@ public class CharactersController : ControllerBase
 
         var disp = new Disposition
         {
-            CharacterId = id,
-            DefectId    = null,
-            Decision    = dto.Decision,
-            EnteredBy   = dto.EnteredBy,
-            DecidedAt   = dto.DecidedAt ?? DateTime.UtcNow,
-            Note        = dto.Note ?? "",
-            SpecRef     = dto.SpecRef,
-            Engineer    = dto.Engineer,
+            CharacterId          = id,
+            DefectId             = null,
+            Decision             = dto.Decision,
+            EnteredBy            = dto.EnteredBy,
+            DecidedAt            = dto.DecidedAt.HasValue ? DateTime.SpecifyKind(dto.DecidedAt.Value, DateTimeKind.Utc) : DateTime.UtcNow,
+            Note                 = dto.Note ?? "",
+            SpecRef              = dto.SpecRef,
+            Engineer             = dto.Engineer,
+            MeasurementsSnapshot = dto.MeasurementsSnapshot,
         };
         var created = await _dispRepo.AddAsync(disp);
         return Ok(new

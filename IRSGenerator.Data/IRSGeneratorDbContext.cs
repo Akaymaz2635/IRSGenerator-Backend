@@ -39,6 +39,10 @@ namespace IRSGenerator.Data
         public DbSet<DispositionType> DispositionTypes { get; set; }
         public DbSet<DispositionTransition> DispositionTransitions { get; set; }
 
+        // NCM entities
+        public DbSet<CauseCode> CauseCodes { get; set; }
+        public DbSet<NcmDispositionType> NcmDispositionTypes { get; set; }
+
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public IRSGeneratorDbContext(DbContextOptions<IRSGeneratorDbContext> options, IHttpContextAccessor httpContextAccessor) : base(options)

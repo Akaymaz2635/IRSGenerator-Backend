@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Repositories;
 using IRSGenerator.Shared.Dtos.VisualSystemConfig;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 // Her iki route da çalışır: /api/system-config  ve  /api/VisualSystemConfig
 [Route("api/system-config")]
 [ApiController]
+[Authorize]
 public class VisualSystemConfigController : ControllerBase
 {
     private readonly IVisualSystemConfigRepository _repo;
@@ -45,6 +47,7 @@ public class VisualSystemConfigController : ControllerBase
     }
 
     [HttpPut]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update([FromBody] VisualSystemConfigUpdateDto dto)
     {
         if (dto.PhotoRootFolder is not null)

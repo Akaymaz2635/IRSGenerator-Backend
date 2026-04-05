@@ -40,6 +40,24 @@ function _writeEnded(ok, errMsg) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function requestBlob(method, path, body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  const res = await fetch(BASE_URL + path, opts);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail || `HTTP ${res.status}`);
+  }
+  const blob        = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match       = disposition.match(/filename[^;=\n]*=["']?([^"';\n]+)/i);
+  const fileName    = match ? match[1].trim() : 'download';
+  return { blob, fileName };
+}
+
 async function request(method, path, body = null, isFormData = false) {
   const isWrite = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
   if (isWrite) _writeBegan();
@@ -148,6 +166,33 @@ export const api = {
     },
     reportUrl: (id) => `${BASE_URL}/api/inspections/${id}/report`,
     combinedReportUrl: (id) => `${BASE_URL}/api/inspections/${id}/report?type=full`,
+    detailReportUrl: (id) => `${BASE_URL}/api/inspections/${id}/detail-report`,
+    ncrDescriptions: (id) => request('GET', `/api/inspections/${id}/nonconformance-descriptions`),
+    ncmData:         (id) => request('GET', `/api/inspections/${id}/ncm`),
+  },
+
+  causeCodes: {
+    list:   (active_only = false) => request('GET', `/api/cause-codes${active_only ? '?active_only=true' : ''}`),
+    create: (data) => request('POST', '/api/cause-codes', data),
+    update: (id, data) => request('PUT', `/api/cause-codes/${id}`, data),
+    delete: (id)   => request('DELETE', `/api/cause-codes/${id}`),
+  },
+
+  ncmDispositionTypes: {
+    list:   (active_only = false) => request('GET', `/api/ncm-disposition-types${active_only ? '?active_only=true' : ''}`),
+    create: (data) => request('POST', '/api/ncm-disposition-types', data),
+    update: (id, data) => request('PUT', `/api/ncm-disposition-types/${id}`, data),
+    delete: (id)   => request('DELETE', `/api/ncm-disposition-types/${id}`),
+  },
+
+  ncm: {
+    generate:        (data)              => requestBlob('POST', '/api/ncm/generate', data),
+    listTemplates:   ()                  => request('GET', '/api/ncm/templates'),
+    uploadTemplate:  (fileName, file)    => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return request('POST', `/api/ncm/templates/${encodeURIComponent(fileName)}`, fd, true);
+    },
   },
 
   defects: {

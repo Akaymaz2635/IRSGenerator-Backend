@@ -30,6 +30,17 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDispositionTypeRepository, DispositionTypeRepository>();
 builder.Services.AddScoped<IDispositionTransitionRepository, DispositionTransitionRepository>();
 
+// NCM repository kayıtları
+builder.Services.AddScoped<ICauseCodeRepository, CauseCodeRepository>();
+builder.Services.AddScoped<INcmDispositionTypeRepository, NcmDispositionTypeRepository>();
+
+// NcmSheetGenerator — şablon dizini: appsettings'den okunur, boşsa proje kökündeki DispositionTemplates
+var configuredTemplatesPath = builder.Configuration["NcmSettings:TemplatesPath"];
+var templatesDir = string.IsNullOrWhiteSpace(configuredTemplatesPath)
+    ? Path.Combine(builder.Environment.ContentRootPath, "DispositionTemplates")
+    : configuredTemplatesPath;
+builder.Services.AddSingleton(new NcmSheetGenerator(templatesDir));
+
 // IRSGenerator word services
 builder.Services.AddScoped<WordOpSheetParser>();
 builder.Services.AddScoped<WordReportWriter>();

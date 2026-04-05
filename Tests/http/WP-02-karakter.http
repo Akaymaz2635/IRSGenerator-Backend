@@ -1,0 +1,243 @@
+### WP-02 — OP-Sheet Parse & Karakter Yönetimi
+### Özellik #5, #7, #8, #9, #10, #11, #12, #13
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ─── TC-02.1 — OP-Sheet Parse ────────────────────────────────────────────────
+# Ön koşul: ITEM NO + DIMENSION sütunları olan geçerli bir .docx dosyası
+# Beklenen: { "characters_created": N, "characters": [...] }
+# Bu isteği REST Client ile çalıştırmak için dosya yolu güncelleyin.
+POST {{baseUrl}}/api/inspections/1/parse-op-sheet
+Content-Type: multipart/form-data; boundary=----TestBoundary
+
+------TestBoundary
+Content-Disposition: form-data; name="file"; filename="test_op_sheet.docx"
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+< ./test_op_sheet.docx
+------TestBoundary--
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: EsitToleransli ─────────────────────
+# Beklenen: lower_limit=9.5, upper_limit=10.5
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "1",
+  "dimension": "10.0 ± 0.5",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: ArtiEksi ────────────────────────────
+# Beklenen: lower_limit=9.8, upper_limit=10.3
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "2",
+  "dimension": "10.0 +0.3/-0.2",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: MIN ─────────────────────────────────
+# Beklenen: lower_limit=5.0, upper_limit=double.MaxValue
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "3",
+  "dimension": "MIN 5.0",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: MAX ─────────────────────────────────
+# Beklenen: lower_limit=0, upper_limit=15.0
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "4",
+  "dimension": "MAX 15.0",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: LimitToleransi ──────────────────────
+# Beklenen: lower_limit=5.0, upper_limit=15.0
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "5",
+  "dimension": "5.0 / 15.0",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: Geometrik TRUE POSITION ─────────────
+# Beklenen: lower_limit=0, upper_limit=0.1
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "6",
+  "dimension": "[TRUE POSITION | 0.1 | A B]",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: Pürüzlülük Ra ───────────────────────
+# Beklenen: lower_limit=0, upper_limit=1.6
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "7",
+  "dimension": "Ra 1.6",
+  "inspection_id": 1
+}
+
+###
+
+# ─── TC-02.2 — Otomatik Limit Çıkarımı: Diş Toleransı ───────────────────────
+# Beklenen: lower_limit=0, upper_limit=0 (diş formatında sayısal limit yok)
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "8",
+  "dimension": "M10x1.5",
+  "inspection_id": 1
+}
+
+###
+
+# ─── Karakter detayını doğrula ───────────────────────────────────────────────
+# {id} yerine yukarıdaki yanıttan gelen id'yi girin
+GET {{baseUrl}}/api/characters/1
+
+###
+
+# ─── Muayeneye ait tüm karakterler ──────────────────────────────────────────
+GET {{baseUrl}}/api/characters?inspection_id=1
+
+###
+
+# ─── TC-02.3 — Numerik Sonuç Girişi (Çok Parça) ─────────────────────────────
+# character_id yerine TC-02.2'de oluşturulan ilk karakter id'sini kullanın
+
+POST {{baseUrl}}/api/numeric-part-results
+Content-Type: {{contentType}}
+
+{
+  "character_id": 1,
+  "actual": "9.8",
+  "part_label": "Parça-1"
+}
+
+###
+
+POST {{baseUrl}}/api/numeric-part-results
+Content-Type: {{contentType}}
+
+{
+  "character_id": 1,
+  "actual": "10.1",
+  "part_label": "Parça-2"
+}
+
+###
+
+# Doğrulama: 2 kayıt, doğru part_label'lar
+GET {{baseUrl}}/api/numeric-part-results?character_id=1
+
+###
+
+# ─── TC-02.4 — Kategorik Sonuç (LOT) ────────────────────────────────────────
+POST {{baseUrl}}/api/categorical-part-results
+Content-Type: {{contentType}}
+
+{
+  "character_id": 1,
+  "index": "1",
+  "is_confirmed": true,
+  "additional_info": "OK"
+}
+
+###
+
+GET {{baseUrl}}/api/categorical-part-results?character_id=1
+
+###
+
+# ─── TC-02.5 — Zon Bazlı Sonuç ───────────────────────────────────────────────
+POST {{baseUrl}}/api/categorical-zone-results
+Content-Type: {{contentType}}
+
+{
+  "character_id": 1,
+  "zone_name": "ZoneA",
+  "is_confirmed": false
+}
+
+###
+
+GET {{baseUrl}}/api/categorical-zone-results?character_id=1
+
+###
+
+# ─── TC-02.6 — Karakter Disposition ─────────────────────────────────────────
+POST {{baseUrl}}/api/characters/1/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "USE_AS_IS",
+  "entered_by": "Mühendis A",
+  "note": "Spec içinde",
+  "spec_ref": "Drawing Rev.B"
+}
+
+###
+
+GET {{baseUrl}}/api/characters/1/dispositions
+
+###
+
+# ─── TC-02.7 — IRS Proje Şablonu ─────────────────────────────────────────────
+POST {{baseUrl}}/api/irs-projects
+Content-Type: {{contentType}}
+
+{
+  "part_number": "P100",
+  "operation": 10,
+  "serial_number": "SN-TEMPLATE"
+}
+
+###
+
+# Şablona karakter ekle (irs_project_id doldur)
+POST {{baseUrl}}/api/characters
+Content-Type: {{contentType}}
+
+{
+  "item_no": "1",
+  "dimension": "10±0.5",
+  "irs_project_id": 1
+}
+
+###
+
+# Şablon karakterlerini listele
+GET {{baseUrl}}/api/characters?irs_project_id=1

@@ -22,4 +22,11 @@
     <ProjectReference Include="..\IRSGenerator.Shared\IRSGenerator.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- .docx şablon dosyalarını çıktı dizinine kopyala -->
+    <Content Include="DispositionTemplates\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

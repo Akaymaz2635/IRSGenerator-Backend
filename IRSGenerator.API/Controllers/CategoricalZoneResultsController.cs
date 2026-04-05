@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/categorical-zone-results")]
 [ApiController]
+[Authorize]
 public class CategoricalZoneResultsController : ControllerBase
 {
     private readonly ICategoricalZoneResultRepository _repo;
@@ -36,6 +38,7 @@ public class CategoricalZoneResultsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<CategoricalZoneResultReadDto>> Create(
         [FromBody] CategoricalZoneResultCreateDto dto)
     {
@@ -51,6 +54,7 @@ public class CategoricalZoneResultsController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] CategoricalZoneResultCreateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -63,6 +67,7 @@ public class CategoricalZoneResultsController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -72,6 +77,7 @@ public class CategoricalZoneResultsController : ControllerBase
     }
 
     [HttpDelete]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> DeleteByCharacter(
         [FromQuery(Name = "character_id")] long? characterId)
     {

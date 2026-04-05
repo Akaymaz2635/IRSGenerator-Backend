@@ -1,0 +1,81 @@
+### WP-04 — Fotoğraf Yönetimi
+### Özellik #18, #19, #20, #21
+
+@baseUrl = https://localhost:7164
+
+# ─── TC-04.1 — Fotoğraf Yükleme ──────────────────────────────────────────────
+# Beklenen: 201, filename (GUID), filepath=/photos/...
+# Kontrol: Fiziksel dosya wwwroot/photos/ altında mevcut
+# REST Client: < yoluyla gerçek bir jpg dosyası gösterin
+POST {{baseUrl}}/api/photos?inspection_id=1
+Content-Type: multipart/form-data; boundary=----PhotoBoundary
+
+------PhotoBoundary
+Content-Disposition: form-data; name="file"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+------PhotoBoundary--
+
+###
+
+# ─── TC-04.2 — Fotoğrafı Hataya Bağlama (Upload Sırasında) ──────────────────
+# defect_ids[] query parametresiyle birden fazla hata belirtebilirsiniz
+# Beklenen: PhotoDefect junction kayıtları oluştu
+POST {{baseUrl}}/api/photos?inspection_id=1&defect_ids[]=1&defect_ids[]=2
+Content-Type: multipart/form-data; boundary=----PhotoBoundary2
+
+------PhotoBoundary2
+Content-Disposition: form-data; name="file"; filename="test2.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+------PhotoBoundary2--
+
+###
+
+# Doğrulama: yüklenen fotoğraf defect_id=1 için görünüyor mu?
+GET {{baseUrl}}/api/photos?defect_id=1
+
+###
+
+# Muayeneye ait tüm fotoğraflar
+GET {{baseUrl}}/api/photos?inspection_id=1
+
+###
+
+# ─── TC-04.3 — Fotoğraf-Hata Bağlantısı Güncelleme ──────────────────────────
+# Beklenen: Eski bağlantılar silindi, yenileri eklendi
+# photo_id yerine TC-04.1'deki fotoğraf id'sini girin
+PUT {{baseUrl}}/api/photos/1/defects
+Content-Type: application/json
+
+[3, 4]
+
+###
+
+# Doğrulama: güncelleme sonrası
+GET {{baseUrl}}/api/photos/1
+
+###
+
+# ─── TC-04.4 — Fotoğraf Silme ────────────────────────────────────────────────
+# Beklenen: DB kaydı silindi + wwwroot/photos/ fiziksel dosya silindi
+DELETE {{baseUrl}}/api/photos/1
+
+###
+
+# Doğrulama: 404 bekleniyor
+GET {{baseUrl}}/api/photos/1
+
+###
+
+# ─── TC-04.5 — Fotoğraf Servisi (File Endpoint) ──────────────────────────────
+# Beklenen: 302 Redirect → /photos/{guid}.jpg  veya direkt 200 dosya içeriği
+# UI'da görüntü yükleniyor mu kontrol et
+GET {{baseUrl}}/api/photos/2/file
+
+###
+
+# ─── Yardımcı: Tüm fotoğraflar ───────────────────────────────────────────────
+GET {{baseUrl}}/api/photos

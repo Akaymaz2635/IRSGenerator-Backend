@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/categorical-part-results")]
 [ApiController]
+[Authorize]
 public class CategoricalPartResultsController : ControllerBase
 {
     private readonly ICategoricalPartResultRepository _repo;
@@ -36,6 +38,7 @@ public class CategoricalPartResultsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<CategoricalPartResultReadDto>> Create(
         [FromBody] CategoricalPartResultCreateDto dto)
     {
@@ -45,12 +48,15 @@ public class CategoricalPartResultsController : ControllerBase
             IsConfirmed    = dto.IsConfirmed,
             AdditionalInfo = dto.AdditionalInfo,
             CharacterId    = dto.CharacterId,
+            UpdateReason   = dto.UpdateReason,
+            UpdateNote     = dto.UpdateNote,
         };
         var created = await _repo.AddAsync(entity);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToDto(created));
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] CategoricalPartResultCreateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -58,11 +64,14 @@ public class CategoricalPartResultsController : ControllerBase
         entity.Index          = dto.Index;
         entity.IsConfirmed    = dto.IsConfirmed;
         entity.AdditionalInfo = dto.AdditionalInfo;
+        entity.UpdateReason   = dto.UpdateReason;
+        entity.UpdateNote     = dto.UpdateNote;
         await _repo.UpdateAsync(entity);
         return NoContent();
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -72,6 +81,7 @@ public class CategoricalPartResultsController : ControllerBase
     }
 
     [HttpDelete]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> DeleteByCharacter(
         [FromQuery(Name = "character_id")] long? characterId)
     {
@@ -89,6 +99,8 @@ public class CategoricalPartResultsController : ControllerBase
         IsConfirmed    = e.IsConfirmed,
         AdditionalInfo = e.AdditionalInfo,
         CharacterId    = e.CharacterId,
+        UpdateReason   = e.UpdateReason,
+        UpdateNote     = e.UpdateNote,
         CreatedAt      = e.CreatedAt,
         UpdatedAt      = e.UpdatedAt,
     };

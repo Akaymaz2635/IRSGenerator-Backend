@@ -341,10 +341,12 @@ async function render(id, root) {
           <button class="btn btn-ghost btn-sm" id="report-dropdown-btn">Visual Report ▾</button>
           <div class="dropdown-menu" id="report-dropdown-menu">
             <button class="dropdown-item" id="report-landscape-btn">A4 Yatay (Hata başına sayfa)</button>
+            <button class="dropdown-item" id="report-detail-btn">📊 Detail Report</button>
           </div>
         </div>
         <a class="btn btn-ghost btn-sm" id="word-report-btn" href="${api.inspections.reportUrl(id)}" download>📄 Dimensional Report</a>
-        <a class="btn btn-ghost btn-sm" id="combined-report-btn" href="${api.inspections.combinedReportUrl(id)}" download>📋 Combined Report</a>
+        <a class="btn btn-ghost btn-sm" href="${api.inspections.detailReportUrl(id)}" target="_blank">📋 Detailed Report</a>
+        <a href="#/inspections/${id}/ncr" class="btn btn-ghost btn-sm">⚠ NC Descriptions</a>
         ${pageCanWrite ? `<a href="#/inspections/${id}/edit" class="btn btn-ghost btn-sm">Düzenle</a>` : ''}
         ${pageCanWrite ? `<button class="btn btn-danger btn-sm" id="delete-insp-btn">Sil</button>` : ''}
       </div>
@@ -418,11 +420,11 @@ async function render(id, root) {
             — Belirli bir hatayla ilişkilendirilmemiş
           </span>
         </span>
-        <div class="d-flex gap-10 align-center">
+        ${pageCanWrite ? `<div class="d-flex gap-10 align-center">
           <button class="btn btn-primary btn-sm" id="open-camera-btn">📷 Kamera</button>
           <label class="btn btn-ghost btn-sm" for="photo-upload-input">📁 Dosya Yükle</label>
           <input type="file" id="photo-upload-input" class="file-input-hidden" accept="image/*" multiple />
-        </div>
+        </div>` : ''}
       </div>
       ${generalPhotos.length === 0
         ? '<div class="empty">Genel fotoğraf bulunmuyor.</div>'
@@ -445,16 +447,25 @@ async function render(id, root) {
 
   // char state map: id → { result: 'ok'|'fail'|null, actual: value }
   const _charState  = {};
+  const _charDispState = {};   // character_id → active disposition object or null
 
   function _charBadgeHtml(c) {
     const s = _charState[c.id];
+    const disp = _charDispState[c.id];
     if (!s || s.result === null) return '<span class="dim-char-dot dim-dot-pending">●</span>';
-    if (s.result === 'ok')   return '<span class="dim-char-dot dim-dot-ok">✓</span>';
+    if (s.result === 'ok') return '<span class="dim-char-dot dim-dot-ok">✓</span>';
+    // fail — check disposition
+    if (disp) {
+      const isNeutral = (_dispTypeCache || []).some(t => t.code === disp.decision && t.is_neutralizing);
+      if (isNeutral) return '<span class="dim-char-dot" style="color:var(--success);font-size:10px;font-weight:700" title="NC — Dispositioned (Neutral)">⚖✓</span>';
+      return '<span class="dim-char-dot" style="color:#f59e0b;font-size:10px;font-weight:700" title="NC — Dispositioned (Pending)">⚖!</span>';
+    }
     return '<span class="dim-char-dot dim-dot-fail">✗</span>';
   }
 
   function _isLot(c) {
-    return (c.badge || '').toUpperCase() === 'LOT';
+    const b = (c.badge || '').toUpperCase();
+    return b === 'LOT' || b === 'ATTRIBUTE';
   }
 
   function _renderStats() {
@@ -564,11 +575,16 @@ async function render(id, root) {
     const existingVal = _charState[c.id]?.actual ?? '';
 
     // Detail info rows (shared by LOT and numeric)
+    const _stateNow  = _charState[c.id];
+    const _savedNote  = _stateNow?.note  ?? c.note ?? '';
+    const _savedZones = _stateNow?.zones ?? [];
     const detailRows = [
       c.tooling          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Tooling</span><span class="dim-detail-val">${c.tooling}</span></div>` : '',
       c.bp_zone          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">B/P Zone</span><span class="dim-detail-val">${c.bp_zone}</span></div>` : '',
       c.inspection_level ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Insp. Level</span><span class="dim-detail-val">${c.inspection_level}</span></div>` : '',
       c.remarks          ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Remarks</span><span class="dim-detail-val">${c.remarks}</span></div>` : '',
+      _savedZones.length > 0 ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Zones</span><span class="dim-detail-val">${_savedZones.map(z => `<span style="display:inline-block;padding:1px 5px;border-radius:3px;margin:1px;font-size:11px;background:${z.is_confirmed===false?'rgba(220,53,69,.15)':'rgba(56,161,105,.15)'};color:${z.is_confirmed===false?'#c0392b':'#276749'}">${z.zone_name}</span>`).join('')}</span></div>` : '',
+      _savedNote ? `<div class="dim-detail-row"><span class="dim-detail-lbl">Not</span><span class="dim-detail-val" style="font-style:italic;color:var(--text-secondary)">${_savedNote}</span></div>` : '',
     ].join('');
 
     if (_isLot(c)) {
@@ -578,20 +594,21 @@ async function render(id, root) {
         </div>
         <div class="dim-dimension">${c.dimension || '—'}</div>
         <div class="dim-limits" style="color:var(--text-secondary);font-size:12px;">
-          Categorical check — no numeric measurement required.<br>
+          Attribute check — no numeric measurement required.<br>
           Inspect visually and confirm conformance.
         </div>
         ${detailRows}
-        <div class="dim-lot-btns">
+        ${pageCanWrite ? `<div class="dim-lot-btns">
           <button class="btn btn-primary dim-lot-btn" data-result="Conform">✓ Conform</button>
           <button class="btn btn-danger  dim-lot-btn" data-result="Not Conform">✗ Not Conform</button>
-        </div>
+        </div>` : ''}
         <div class="dim-nav-row">
           <button class="btn btn-ghost btn-sm" id="dim-prev-btn">◀ Prev</button>
           <span class="dim-nav-counter">${index + 1} / ${_chars.length}</span>
           <button class="btn btn-ghost btn-sm" id="dim-next-btn">Next ▶</button>
           <button class="btn btn-secondary btn-sm" id="dim-open-detail-btn">📋 Detail</button>
         </div>
+        <div id="dim-nc-panel"></div>
         <div class="dim-progress-wrap">
           <div class="dim-progress-bar-bg"><div class="dim-progress-bar" id="dim-progress-bar"></div></div>
           <span class="dim-progress-lbl" id="dim-progress-label"></span>
@@ -603,6 +620,9 @@ async function render(id, root) {
       entryEl.querySelectorAll('.dim-lot-btn').forEach(btn => {
         btn.addEventListener('click', () => _saveLot(c, btn.dataset.result));
       });
+
+      // Render NC panel if already Not Conform
+      if (_charState[c.id]?.result === 'fail') _renderNcActionPanel(c);
     } else {
       entryEl.innerHTML = `
         <div class="dim-entry-header">
@@ -616,18 +636,18 @@ async function render(id, root) {
             : '<span class="text-secondary">No limits defined</span>'}
         </div>
         ${detailRows}
-        <div class="dim-input-row">
+        ${pageCanWrite ? `<div class="dim-input-row">
           <input type="text" class="form-input dim-actual-input" id="dim-actual-input"
                  placeholder="Enter measurement…" value="${existingVal}" autocomplete="off" />
           <span class="dim-tol-preview" id="dim-tol-preview"></span>
-        </div>
+        </div>` : ''}
         <div class="dim-nav-row">
           <button class="btn btn-ghost btn-sm" id="dim-prev-btn">◀ Prev</button>
           <span class="dim-nav-counter">${index + 1} / ${_chars.length}</span>
           <button class="btn btn-ghost btn-sm" id="dim-next-btn">Next ▶</button>
           <button class="btn btn-secondary btn-sm" id="dim-open-detail-btn">📋 Detail</button>
-          <button class="btn btn-warning btn-sm" id="dim-decision-btn">🎯 Karar</button>
         </div>
+        <div id="dim-nc-panel"></div>
         <div class="dim-progress-wrap">
           <div class="dim-progress-bar-bg"><div class="dim-progress-bar" id="dim-progress-bar"></div></div>
           <span class="dim-progress-lbl" id="dim-progress-label"></span>
@@ -636,33 +656,35 @@ async function render(id, root) {
       entryEl.querySelector('#dim-open-detail-btn')?.addEventListener('click', () =>
         _openDetailModal(_chars[_activeIndex]));
 
-      entryEl.querySelector('#dim-decision-btn')?.addEventListener('click', () =>
-        _openQuickDecisionPanel(c, entryEl));
+      // Render NC panel if already NOK
+      if (_charState[c.id]?.result === 'fail') _renderNcActionPanel(c);
 
       const input   = entryEl.querySelector('#dim-actual-input');
       const preview = entryEl.querySelector('#dim-tol-preview');
 
-      function updatePreview(val) {
-        if (!hasLimits || !val) { preview.textContent = ''; preview.className = 'dim-tol-preview'; return; }
-        const allVals = val.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-        if (allVals.length === 0) { preview.textContent = ''; return; }
-        const ok = allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
-        if (ok) {
-          preview.textContent = '✓ Within Tolerance';
-          preview.className   = 'dim-tol-preview dim-tol-ok';
-        } else {
-          preview.textContent = '✗ Out of Tolerance';
-          preview.className   = 'dim-tol-preview dim-tol-fail';
+      if (input) {
+        function updatePreview(val) {
+          if (!hasLimits || !val) { preview.textContent = ''; preview.className = 'dim-tol-preview'; return; }
+          const allVals = val.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+          if (allVals.length === 0) { preview.textContent = ''; return; }
+          const ok = allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
+          if (ok) {
+            preview.textContent = '✓ Within Tolerance';
+            preview.className   = 'dim-tol-preview dim-tol-ok';
+          } else {
+            preview.textContent = '✗ Out of Tolerance';
+            preview.className   = 'dim-tol-preview dim-tol-fail';
+          }
         }
+
+        updatePreview(String(existingVal));
+
+        input.addEventListener('input', () => updatePreview(input.value));
+        input.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); await _saveNumeric(c, input.value); }
+        });
+        input.focus();
       }
-
-      updatePreview(String(existingVal));
-
-      input.addEventListener('input', () => updatePreview(input.value));
-      input.addEventListener('keydown', async (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); await _saveNumeric(c, input.value); }
-      });
-      input.focus();
     }
 
     // Nav buttons (always rendered)
@@ -672,6 +694,45 @@ async function render(id, root) {
     if (nextBtn) { nextBtn.disabled = index === _chars.length - 1; nextBtn.addEventListener('click', () => _activateChar(index + 1)); }
 
     _renderProgress();
+  }
+
+  // Returns { reason: 'typo'|'re-inspect' } or null if cancelled
+  function _showUpdateConfirmDialog(oldVal, newVal) {
+    return new Promise(resolve => {
+      const ov = document.createElement('div');
+      ov.className = 'modal-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+      ov.innerHTML = `
+        <div style="background:var(--bg-card,#fff);border-radius:8px;padding:24px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+          <div style="font-weight:600;margin-bottom:12px">Değer Değiştiriliyor</div>
+          <p style="margin-bottom:16px;color:var(--text-secondary,#666)">
+            <strong>${oldVal}</strong> → <strong>${newVal}</strong>
+          </p>
+          <label style="display:block;margin-bottom:8px;font-size:13px">Değişiklik nedeni:</label>
+          <select id="_upd-reason" style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:4px;margin-bottom:12px">
+            <option value="typo">Typo (yanlış giriş)</option>
+            <option value="re-inspect">Re-inspect (yeniden ölçüm)</option>
+          </select>
+          <label style="display:block;margin-bottom:6px;font-size:13px">Not <span style="color:var(--text-secondary,#999);font-weight:400">(opsiyonel)</span>:</label>
+          <textarea id="_upd-note" rows="3" placeholder="Açıklama ekleyin…"
+            style="width:100%;padding:8px;border:1px solid var(--border,#ddd);border-radius:4px;resize:vertical;font-size:13px;margin-bottom:16px;box-sizing:border-box"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="_upd-cancel" class="btn btn-secondary">İptal</button>
+            <button id="_upd-confirm" class="btn btn-primary">Onayla</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.querySelector('#_upd-confirm').addEventListener('click', () => {
+        const reason = ov.querySelector('#_upd-reason').value;
+        const note   = ov.querySelector('#_upd-note').value.trim() || null;
+        document.body.removeChild(ov);
+        resolve({ reason, note });
+      });
+      ov.querySelector('#_upd-cancel').addEventListener('click', () => {
+        document.body.removeChild(ov);
+        resolve(null);
+      });
+    });
   }
 
   async function _saveNumeric(c, rawVal) {
@@ -684,18 +745,31 @@ async function render(id, root) {
     const isOk = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
     const resultStr = allVals.length > 1 ? `${min} / ${max}` : String(allVals[0]);
 
+    // Detect update: if a value already exists and is different, ask for reason
+    const existing = _charState[c.id]?.actual;
+    let updateReason = null;
+    let updateNote   = null;
+    if (existing && existing !== resultStr) {
+      const answer = await _showUpdateConfirmDialog(existing, resultStr);
+      if (!answer) return;
+      updateReason = answer.reason;
+      updateNote   = answer.note;
+    }
+
     try {
-      await api.numericResults.create({ character_id: c.id, actual: rawVal, part_label: null });
+      await api.numericResults.deleteByCharacter(c.id);
+      await api.numericResults.create({ character_id: c.id, actual: rawVal, part_label: null, update_reason: updateReason, update_note: updateNote });
       await api.characters.update(c.id, { inspection_result: resultStr });
-      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: rawVal };
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr };
       const numCharObj = _chars.find(ch => ch.id === c.id);
       if (numCharObj) numCharObj.inspection_result = resultStr;
       _updateCharListItem(_activeIndex);
       _renderStats();
       _renderProgress();
       _updateDocActualCell(c, resultStr, isOk);
+      if (!isOk) _renderNcActionPanel(c);
       window.toast('Saved', 'success');
-      if (_activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
+      if (isOk && _activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
     } catch (err) {
       window.toast('Save error: ' + err.message, 'error');
     }
@@ -703,94 +777,287 @@ async function render(id, root) {
 
   async function _saveLot(c, resultStr) {
     const isOk = resultStr === 'Conform';
+
+    // Update detection: if existing result differs, ask for reason
+    const existing = _charState[c.id]?.actual;
+    let updateReason = null;
+    let updateNote   = null;
+    if (existing && existing !== resultStr) {
+      const answer = await _showUpdateConfirmDialog(existing, resultStr);
+      if (!answer) return;
+      updateReason = answer.reason;
+      updateNote   = answer.note;
+    }
+
     try {
-      await api.categoricalResults.create({ character_id: c.id, is_confirmed: isOk });
+      await api.categoricalResults.deleteByCharacter(c.id);
+      await api.categoricalResults.create({
+        character_id: c.id,
+        is_confirmed: isOk,
+        update_reason: updateReason,
+        update_note:   updateNote,
+      });
       await api.characters.update(c.id, { inspection_result: resultStr });
-      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr };
+      _charState[c.id] = { ...(_charState[c.id] || {}), result: isOk ? 'ok' : 'fail', actual: resultStr };
       const lotCharObj = _chars.find(ch => ch.id === c.id);
       if (lotCharObj) lotCharObj.inspection_result = resultStr;
       _updateCharListItem(_activeIndex);
       _renderStats();
       _renderProgress();
       _updateDocActualCell(c, resultStr, isOk);
+      if (!isOk) _renderNcActionPanel(c);
       window.toast('Saved', 'success');
-      if (_activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
+      if (isOk && _activeIndex < _chars.length - 1) _activateChar(_activeIndex + 1);
     } catch (err) {
       window.toast('Save error: ' + err.message, 'error');
     }
   }
 
-  async function _openQuickDecisionPanel(c, entryEl) {
-    // Remove existing panel if open
-    entryEl.querySelector('.dim-quick-decision')?.remove();
+  function _renderNcActionPanel(c) {
+    const panel = document.getElementById('dim-nc-panel');
+    if (!panel) return;
+    const disp = _charDispState[c.id];
+    if (disp) {
+      const types = _dispTypeCache || [];
+      const dt = types.find(t => t.code === disp.decision);
+      panel.innerHTML = `
+        <div style="background:var(--color-warning-bg,#fffbeb);border:1px solid var(--color-warning,#f59e0b);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:13px">
+          <span style="font-weight:600">Karar:</span>
+          <span class="disp-badge disp-${dt?.css_class||'unknown'}" style="margin-left:6px">${dt?.label||disp.decision}</span>
+          <span style="color:var(--text-secondary,#666);margin-left:8px;font-size:12px">${disp.entered_by||''}</span>
+        </div>`;
+    } else {
+      const currentUser = session.get() || 'Inspector';
+      panel.innerHTML = `
+        <div class="nc-action-panel" style="background:var(--color-danger-bg,#fef2f2);border:1px solid var(--color-danger,#ef4444);border-radius:6px;padding:10px 14px;margin-top:10px">
+          <div style="font-weight:600;color:var(--color-danger,#ef4444);font-size:13px;margin-bottom:8px">⚠ Tolerans dışı — Karar gerekli</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm nc-disp-btn" data-disp="MRB_SUBMITTED" style="background:#7c3aed;color:#fff;border:none">MRB_ACCEPT</button>
+            <button class="btn btn-sm nc-disp-btn" data-disp="KABUL_RESIM" style="background:#059669;color:#fff;border:none">ACCEPT_PER_BP</button>
+            <button class="btn btn-sm nc-disp-btn" data-disp="SCRAP" style="background:#dc2626;color:#fff;border:none">SCRAP</button>
+          </div>
+        </div>`;
+      panel.querySelectorAll('.nc-disp-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const dispCode = btn.dataset.disp;
+          btn.disabled = true;
+          try {
+            await api.characters.addDisposition(c.id, { decision: dispCode, entered_by: currentUser, note: '' });
+            _charDispState[c.id] = { decision: dispCode, entered_by: currentUser };
+            const idx = _chars.findIndex(ch => ch.id === c.id);
+            if (idx >= 0) _updateCharListItem(idx);
+            _renderNcActionPanel(c);
+            window.toast('Karar kaydedildi.', 'success');
+          } catch (err) {
+            window.toast('Hata: ' + err.message, 'error');
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+  }
 
-    // Fetch character's current (latest non-VOID) disposition code
-    let currentDispCode = null;
-    try {
-      const disps = await api.characters.listDispositions(c.id);
-      const active = disps.filter(d => d.decision !== 'VOID').sort((a, b) =>
-        new Date(b.created_at) - new Date(a.created_at))[0];
-      if (active) currentDispCode = active.decision;
-    } catch { /* no dispositions yet */ }
+  async function _openCharacterDispositionModal(c, onDone) {
+    const today = new Date().toISOString().split('T')[0];
 
-    const types = await _loadDispTypes();
-    const allowed = await allowedNextDecisions(currentDispCode);
-    const options = allowed.length > 0 ? types.filter(t => allowed.includes(t.code)) : types;
+    // Fetch existing dispositions
+    let existingDisps = [];
+    try { existingDisps = await api.characters.listDispositions(c.id); } catch { /* none */ }
+    const active = existingDisps
+      .filter(d => d.decision !== 'VOID')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
+    const currentDecision = active?.decision || null;
 
-    const panel = document.createElement('div');
-    panel.className = 'dim-quick-decision';
-    panel.style.cssText = 'padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary)';
+    const allowed = await allowedNextDecisions(currentDecision);
+    const types   = await _loadDispTypes();
+    const decisionOptions = [
+      { value: '', label: '— Karar Seçiniz —' },
+      ...types
+        .filter(t => t.active && (allowed.length === 0 || allowed.includes(t.code)))
+        .sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+        .map(t => ({ value: t.code, label: t.label })),
+    ];
 
-    const label = document.createElement('div');
-    label.style.cssText = 'font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:600';
-    label.textContent = currentDispCode
-      ? `🎯 Karar (Mevcut: ${currentDispCode})`
-      : '🎯 İlk Karar';
-    panel.appendChild(label);
-
-    const sel = document.createElement('select');
-    sel.className = 'form-input';
-    sel.style.cssText = 'width:100%;margin-bottom:8px;color:#1a1a1a;background:#fff';
-    sel.innerHTML = '<option value="">— Seçiniz —</option>' +
-      options.map(t => `<option value="${t.code}">${t.code} — ${t.label ?? ''}</option>`).join('');
-    panel.appendChild(sel);
-
-    const noteInput = document.createElement('input');
-    noteInput.type = 'text';
-    noteInput.className = 'form-input';
-    noteInput.placeholder = 'Not (opsiyonel)…';
-    noteInput.style.cssText = 'width:100%;margin-bottom:8px;';
-    panel.appendChild(noteInput);
-
-    const btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:6px';
-
-    const applyBtn = document.createElement('button');
-    applyBtn.className = 'btn btn-primary btn-sm';
-    applyBtn.textContent = 'Uygula';
-    applyBtn.addEventListener('click', async () => {
-      if (!sel.value) { window.toast('Bir disposition seçin', 'error'); return; }
-      try {
-        await api.characters.addDisposition(c.id, { decision: sel.value, note: noteInput.value || '' });
-        window.toast(`${sel.value} kaydedildi`, 'success');
-        panel.remove();
-      } catch (err) {
-        window.toast('Hata: ' + err.message, 'error');
+    // Measurement context
+    let numericResults = [];
+    try { numericResults = await api.numericResults.list(c.id); } catch { /* none */ }
+    const hasLimits = (c.lower_limit !== 0 || c.upper_limit !== 0);
+    let measurementHtml = `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">📐 ${c.dimension || 'Dimension'}</div>`;
+    if (numericResults.length > 0) {
+      const byPart = {};
+      for (const r of numericResults) {
+        if (!byPart[r.part_label] || new Date(r.created_at) > new Date(byPart[r.part_label].created_at))
+          byPart[r.part_label] = r;
       }
+      const rows = Object.values(byPart).map(r => {
+        const nums = String(r.actual).split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        const isOk = !hasLimits || (nums.length > 0 && nums.every(v => v >= c.lower_limit && v <= c.upper_limit));
+        return `<tr><td style="padding:2px 6px 2px 0">${r.part_label || '—'}</td>
+          <td style="font-weight:600;color:${isOk ? 'var(--success)' : 'var(--danger)'}">
+            ${r.actual} ${isOk ? '✓' : '✗'}
+          </td></tr>`;
+      }).join('');
+      measurementHtml = `
+        <div class="disp-history-box" style="margin-bottom:12px">
+          <strong style="font-size:12px;display:block;margin-bottom:4px">📐 ${c.dimension || 'Dimension'}</strong>
+          ${hasLimits ? `<span style="font-size:11px;color:var(--text-secondary)">Limits: ${c.lower_limit} — ${c.upper_limit}</span>` : ''}
+          <table style="width:100%;margin-top:6px;font-size:12px;border-collapse:collapse">
+            <tr style="color:var(--text-secondary)"><th style="text-align:left;padding:2px 6px 2px 0">Part</th><th style="text-align:left">Actual</th></tr>
+            ${rows}
+          </table>
+        </div>`;
+    }
+
+    window.modal.open(`
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">⚖ Disposition — Item ${String(c.item_no).replace(/\s+/g, '')}</span>
+          <button class="modal-close" id="dp-close">&times;</button>
+        </div>
+
+        ${active ? `
+          <div class="disp-history-box" style="display:flex;align-items:center;gap:8px">
+            ${dispositionBadge(active)}
+            ${active.note ? `<span class="disp-note-text">${active.note}</span>` : ''}
+            ${pageCanWrite ? `<button class="btn btn-ghost btn-xs" id="dp-void-btn" style="margin-left:auto">✕ Düzelt</button>` : ''}
+          </div>` : ''}
+
+        ${measurementHtml}
+
+        <form id="dp-form" novalidate>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label>Karar *</label>
+            <select class="form-select" name="decision" id="dp-decision" required>
+              ${decisionOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-grid" style="margin-bottom:14px;">
+            <div class="form-group">
+              <label>Kararı Veren Mühendis</label>
+              <input type="text" class="form-input" name="engineer" placeholder="Mühendis adı soyadı" />
+            </div>
+            <div class="form-group">
+              <label>Sicil No (Sisteme Giren) *</label>
+              <input type="text" class="form-input" name="entered_by"
+                     placeholder="Inspector sicil no" value="${session.get() || ''}" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label>Karar Tarihi *</label>
+            <input type="date" class="form-input" name="decided_at" value="${today}" required />
+          </div>
+
+          <div id="dp-fields-USE_AS_IS" class="dp-extra-fields" style="display:none;">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Spec / Doküman No</label>
+              <input type="text" class="form-input" name="spec_ref" placeholder="ör. ENG-SPEC-4421" />
+            </div>
+          </div>
+          <div id="dp-fields-KABUL_RESIM" class="dp-extra-fields" style="display:none;">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Resim / Çizim No</label>
+              <input type="text" class="form-input" name="spec_ref" placeholder="ör. DRW-2026-0042" />
+            </div>
+          </div>
+          <div id="dp-fields-CONFORMS" class="dp-extra-fields" style="display:none;">
+            <p class="text-secondary" style="font-size:12px;padding:4px 0;">Inspector onayı yeterlidir, mühendis kararı gerekmez.</p>
+          </div>
+          <div id="dp-fields-REWORK" class="dp-extra-fields" style="display:none;">
+            <p class="text-secondary" style="font-size:12px;padding:4px 0;">Parça yeniden işleme gönderildi. İşlem sonrası yeniden ölçüm yapılacak.</p>
+          </div>
+          <div id="dp-fields-VOID" class="dp-extra-fields" style="display:none;">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Void Nedeni</label>
+              <input type="text" class="form-input" name="void_reason" placeholder="Neden void?" />
+            </div>
+          </div>
+          <div id="dp-fields-SCRAP" class="dp-extra-fields" style="display:none;">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label>Hurda Nedeni</label>
+              <input type="text" class="form-input" name="scrap_reason" placeholder="Hurda gerekçesi" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label>Not</label>
+            <input type="text" class="form-input" name="note" placeholder="Opsiyonel not…" />
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+            <button type="button" class="btn btn-secondary" id="dp-cancel">İptal</button>
+            <button type="submit" class="btn btn-primary" id="dp-submit">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    `);
+
+    document.getElementById('dp-close').addEventListener('click', () => window.modal.close());
+    document.getElementById('dp-cancel').addEventListener('click', () => window.modal.close());
+
+    // Düzelt / Void
+    document.getElementById('dp-void-btn')?.addEventListener('click', async () => {
+      if (!confirm('Bu kararı geçersiz sayıp yeniden girmek istiyor musunuz?')) return;
+      try {
+        await api.characters.addDisposition(c.id, {
+          decision: 'VOID', entered_by: session.get() || 'Inspector',
+          decided_at: today, note: 'Düzeltme — önceki karar iptal'
+        });
+        _charDispState[c.id] = null;
+        window.modal.close();
+        _openCharacterDispositionModal(c, onDone);
+      } catch (err) { window.toast('Hata: ' + err.message, 'error'); }
     });
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'btn btn-ghost btn-sm';
-    cancelBtn.textContent = 'İptal';
-    cancelBtn.addEventListener('click', () => panel.remove());
+    // Show/hide extra fields
+    const decisionSel = document.getElementById('dp-decision');
+    function showFields(val) {
+      document.querySelectorAll('.dp-extra-fields').forEach(el => el.style.display = 'none');
+      if (val) { const el = document.getElementById(`dp-fields-${val}`); if (el) el.style.display = ''; }
+    }
+    decisionSel.addEventListener('change', () => showFields(decisionSel.value));
 
-    btnRow.appendChild(applyBtn);
-    btnRow.appendChild(cancelBtn);
-    panel.appendChild(btnRow);
+    document.getElementById('dp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('dp-submit');
+      const fd  = new FormData(e.target);
+      const decision   = fd.get('decision');
+      const entered_by = (fd.get('entered_by') || '').trim();
+      const decided_at = fd.get('decided_at');
 
-    // Insert before progress wrap
-    const progressWrap = entryEl.querySelector('.dim-progress-wrap');
-    entryEl.insertBefore(panel, progressWrap);
+      if (!decision)   { window.toast('Karar seçiniz.', 'error'); return; }
+      if (!entered_by) { window.toast('Sicil no zorunludur.', 'error'); return; }
+
+      const payload = { decision, entered_by, decided_at };
+      const engineer    = (fd.get('engineer')    || '').trim(); if (engineer)    payload.engineer    = engineer;
+      const note        = (fd.get('note')        || '').trim(); if (note)        payload.note        = note;
+      const spec_ref    = (fd.get('spec_ref')    || '').trim(); if (spec_ref)    payload.spec_ref    = spec_ref;
+      const void_reason = (fd.get('void_reason') || '').trim(); if (void_reason) payload.void_reason = void_reason;
+      const scrap_reason= (fd.get('scrap_reason')|| '').trim(); if (scrap_reason)payload.scrap_reason= scrap_reason;
+
+      // REWORK kararı verilirken mevcut ölçümleri snapshot olarak kaydet
+      if (decision === 'REWORK' && numericResults.length > 0) {
+        payload.measurements_snapshot = JSON.stringify(
+          numericResults.map(r => ({ part_label: r.part_label, actual: r.actual }))
+        );
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Kaydediliyor...';
+      try {
+        await api.characters.addDisposition(c.id, payload);
+        _charDispState[c.id] = { decision, entered_by, decided_at, note: payload.note || '' };
+        const idx = _chars.findIndex(ch => ch.id === c.id);
+        if (idx >= 0) _updateCharListItem(idx);
+        window.toast('Disposition kaydedildi.', 'success');
+        window.modal.close();
+        if (onDone) await onDone();
+      } catch (err) {
+        window.toast('Hata: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Kaydet';
+      }
+    });
   }
 
   function _attachZoomPan(el) {
@@ -946,13 +1213,13 @@ async function render(id, root) {
     }
   }
 
-  function _buildPartRowsDimensional(c, count, existingResults) {
+  function _buildPartRowsDimensional(c, count, existingResults, labelOverrides) {
     const baseSerial = detail.serial_number || 'Part';
     let html = '';
     for (let i = 1; i <= count; i++) {
       const existing = existingResults[i - 1];
       const val = existing?.actual ?? '';
-      const label = `${baseSerial}-${i}`;
+      const label = (labelOverrides && labelOverrides[i - 1]) || existing?.part_label || `${baseSerial}-${i}`;
       const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
       let statusHtml = '';
       if (val) {
@@ -997,6 +1264,7 @@ async function render(id, root) {
     return html;
   }
 
+  // Zone rows for LOT/Attribute characters (categorical conform/not conform)
   function _buildZoneRows(existingZones) {
     if (!existingZones.length) return '';
     return existingZones.map((z, i) => `
@@ -1004,12 +1272,47 @@ async function render(id, root) {
         <input type="text" class="form-input dm-zone-name" data-zone="${i}"
                placeholder="Zone…" value="${z.zone_name || ''}" style="width:80px;" />
         <input type="text" class="form-input dm-zone-value" data-zone="${i}"
-               placeholder="Measurement…" value="${z.additional_info || ''}" style="width:100px;" />
+               placeholder="Info…" value="${z.additional_info || ''}" style="width:100px;" />
         <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
           <input type="checkbox" class="dm-conform-check" data-zone="${i}"
                  ${z.is_confirmed !== false ? 'checked' : ''}> OK
         </label>
       </div>`).join('');
+  }
+
+  // Zone rows for Dimensional characters (numeric measurement per zone)
+  function _buildZoneRowsDimensional(c, existingZones) {
+    if (!existingZones.length) return '';
+    const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+    return existingZones.map((z, i) => {
+      const val = z.actual ?? z.additional_info ?? '';
+      let statusHtml = '';
+      if (val && hasLimits) {
+        const v = parseFloat(val);
+        if (!isNaN(v)) {
+          statusHtml = (v >= c.lower_limit && v <= c.upper_limit)
+            ? `<span class="dm-part-status ok">✓ OK</span>`
+            : `<span class="dm-part-status fail">✗ OOT</span>`;
+        }
+      }
+      return `
+      <div class="dm-zone-row" data-zone-index="${i}" style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="text" class="form-input dm-zone-name" data-zone="${i}"
+               placeholder="Zone adı…" value="${z.zone_name || z.part_label || ''}" style="width:90px;" />
+        <input type="text" class="form-input dm-zone-actual" data-zone="${i}"
+               placeholder="Ölçüm…" value="${val}" autocomplete="off" style="width:100px;" />
+        <span class="dm-part-info">${statusHtml}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function _collectZoneRowsDimensional() {
+    return Array.from(document.querySelectorAll('#dm-zones-container .dm-zone-row'))
+      .map(row => ({
+        zone_name: row.querySelector('.dm-zone-name')?.value.trim() ?? '',
+        actual:    row.querySelector('.dm-zone-actual')?.value.trim() ?? '',
+      }))
+      .filter(z => z.zone_name && z.actual);
   }
 
   async function _openDetailModal(c) {
@@ -1024,9 +1327,8 @@ async function render(id, root) {
     let existingNumeric = [], existingCategorical = [], existingZones = [], existingDispositions = [];
     try {
       if (!_isLot(c)) {
-        [existingNumeric, existingZones, existingDispositions] = await Promise.all([
+        [existingNumeric, existingDispositions] = await Promise.all([
           api.numericResults.list(c.id),
-          api.zoneResults.list(c.id),
           api.characters.listDispositions(c.id),
         ]);
       } else {
@@ -1037,7 +1339,34 @@ async function render(id, root) {
       }
     } catch { /* use empty arrays */ }
 
-    const partCount = Math.max(1, _isLot(c) ? existingCategorical.length || 1 : existingNumeric.length || 1);
+    // For dimensional: split NumericPartResults into serial-based parts vs named zones
+    // Zone labels are user-defined names (not matching the auto "Serial-N" pattern)
+    let existingParts = existingNumeric;
+    let existingZoneNumerics = [];
+    if (!_isLot(c) && existingNumeric.length > 0) {
+      const baseSerial = detail.serial_number || 'Part';
+      const serialRe   = new RegExp(`^${baseSerial.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$`);
+      existingParts        = existingNumeric.filter(r => !r.part_label || serialRe.test(r.part_label));
+      existingZoneNumerics = existingNumeric.filter(r =>  r.part_label && !serialRe.test(r.part_label));
+    }
+
+    // REWORK snapshot: latest non-void REWORK disposition with measurements_snapshot
+    const reworkSnapshotDisp = [...existingDispositions]
+      .filter(d => d.decision === 'REWORK' && d.decision !== 'VOID' && d.measurements_snapshot)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
+
+    let preReworkMeasurements = null;
+    if (reworkSnapshotDisp) {
+      try { preReworkMeasurements = JSON.parse(reworkSnapshotDisp.measurements_snapshot); } catch { /* ignore */ }
+    }
+
+    // Eğer REWORK snapshot varsa re-inspect için boş satırlarla başla
+    const reinspectMode = !!preReworkMeasurements;
+    const partCount = Math.max(1, _isLot(c)
+      ? existingCategorical.length || 1
+      : reinspectMode
+        ? (preReworkMeasurements.length || 1)   // snapshot'taki part sayısını kullan, rows boş başlasın
+        : existingParts.length || 1);
     const zoneCount = existingZones.length || 0;
     const noteVal = c.note || '';
 
@@ -1064,6 +1393,26 @@ async function render(id, root) {
                 ${c.remarks          ? `<span>Remarks</span><span>${c.remarks}</span>` : ''}
               </div>
             </div>
+            ${preReworkMeasurements ? `
+            <div class="dim-modal-section" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:8px 12px;margin-bottom:8px;">
+              <span style="color:#f59e0b;font-weight:600;">🔄 Round 1 — Pre-Rework</span>
+            </div>
+            <div style="padding:4px 0 12px;opacity:0.7;font-size:12px;">
+              ${preReworkMeasurements.map(r => {
+                const label = r.part_label || '—';
+                const vals = String(r.actual).split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+                const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
+                const isOk = !hasLimits || (vals.length > 0 && vals.every(v => v >= c.lower_limit && v <= c.upper_limit));
+                return `<div class="dm-part-row" style="pointer-events:none;">
+                  <span class="dm-part-label">${label}</span>
+                  <span class="form-input dm-part-input" style="display:inline-block;line-height:2;color:var(--text-secondary);">${r.actual}</span>
+                  <span class="dm-part-status ${isOk ? 'ok' : 'fail'}">${isOk ? '✓ OK' : '✗ OOT'}</span>
+                </div>`;
+              }).join('')}
+            </div>
+            <div class="dim-modal-section" style="background:rgba(56,161,105,0.08);border:1px solid rgba(56,161,105,0.3);border-radius:6px;padding:8px 12px;margin-bottom:8px;">
+              <span style="color:#68d391;font-weight:600;">🔁 Round 2 — Re-Inspect</span>
+            </div>` : ''}
             <div class="dim-modal-section">
               <span>📦 Parts</span>
               <button class="dm-count-btn" id="dm-part-dec">−</button>
@@ -1071,45 +1420,49 @@ async function render(id, root) {
               <button class="dm-count-btn" id="dm-part-inc">+</button>
             </div>
             <div id="dm-parts-container">
-              ${_buildPartRowsDimensional(c, partCount, existingNumeric)}
+              ${_buildPartRowsDimensional(c, partCount, reinspectMode ? [] : existingParts,
+                reinspectMode ? preReworkMeasurements.map(r => r.part_label) : null)}
             </div>
             <div class="dim-modal-section">
-              <span>📐 Zones</span>
+              <span>📐 Zones (bölgesel ölçümler)</span>
               <button class="dm-count-btn" id="dm-zone-dec">−</button>
-              <span class="dm-count-val" id="dm-zone-count">${zoneCount}</span>
+              <span class="dm-count-val" id="dm-zone-count">${existingZoneNumerics.length}</span>
               <button class="dm-count-btn" id="dm-zone-inc">+</button>
             </div>
             <div id="dm-zones-container">
-              ${_buildZoneRows(existingZones)}
+              ${_buildZoneRowsDimensional(c, existingZoneNumerics)}
             </div>
             <div class="dim-modal-section">
               <label>📝 Notes</label>
             </div>
             <textarea id="dm-notes" rows="2">${noteVal}</textarea>
-            ${(c.inspection_result === 'Not Conform' || c.inspection_result === 'Manual Reject') ? `
             <div class="dim-modal-section" style="margin-top:10px">
-              <span>⚠️ Disposition</span>
+              <span>⚖ Disposition</span>
+              ${pageCanWrite ? `<button class="btn btn-primary btn-sm" id="dm-disp-open-btn" style="margin-left:auto">⚖ Karar Ekle / Düzenle</button>` : ''}
             </div>
             <div id="dm-disp-list">
               ${existingDispositions.length > 0
-                ? existingDispositions.map(d => `<div class="dim-disp-row"><span class="disp-badge">${d.decision}</span><span style="font-size:11px;color:var(--text-secondary);margin-left:6px">${d.entered_by || ''}</span></div>`).join('')
-                : '<p style="color:var(--text-secondary);font-size:12px;margin:4px 0 8px">No disposition yet — required before closing inspection.</p>'}
+                ? existingDispositions.map(d => {
+                    const dt = (_dispTypeCache||[]).find(t => t.code === d.decision);
+                    return `<div class="dim-disp-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                      <span class="disp-badge disp-${dt?.css_class||'unknown'}">${dt?.label||d.decision}</span>
+                      <span style="font-size:11px;color:var(--text-secondary)">${d.entered_by || ''}</span>
+                      ${d.note ? `<span style="font-size:11px;color:var(--text-secondary)">— ${d.note}</span>` : ''}
+                    </div>`;
+                  }).join('')
+                : '<p style="color:var(--text-secondary);font-size:12px;margin:4px 0 8px">Henüz karar yok.</p>'}
             </div>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <select class="form-input" id="dm-disp-decision" style="flex:1"></select>
-              <input class="form-input" id="dm-disp-enteredby" placeholder="By…" style="width:100px" />
-              <button class="btn btn-primary btn-sm" id="dm-disp-add-btn">+ Add</button>
-            </div>` : ''}
           </div>
           <div class="dim-modal-footer">
+            ${pageCanWrite ? `
             <button id="dm-manual-accept" class="btn btn-success">✓ Manual Accept</button>
             <button id="dm-manual-reject" class="btn btn-danger">✗ Manual Reject</button>
-            <button id="dm-save" class="btn btn-primary">💾 Save</button>
+            <button id="dm-save" class="btn btn-primary">💾 Save</button>` : ''}
           </div>
         </div>`;
 
       let currentCount = partCount;
-      let currentZoneCount = zoneCount;
+      let currentZoneCount = existingZoneNumerics.length;
 
       document.getElementById('dm-close-btn').addEventListener('click', _closeDetailModal);
 
@@ -1166,51 +1519,32 @@ async function render(id, root) {
         if (currentZoneCount <= 0) return;
         currentZoneCount--;
         document.getElementById('dm-zone-count').textContent = currentZoneCount;
-        const collected = _collectZoneRows();
+        const collected = _collectZoneRowsDimensional();
         collected.splice(currentZoneCount);
-        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRowsDimensional(c, collected);
       });
       document.getElementById('dm-zone-inc').addEventListener('click', () => {
         currentZoneCount++;
         document.getElementById('dm-zone-count').textContent = currentZoneCount;
-        const collected = _collectZoneRows();
+        const collected = _collectZoneRowsDimensional();
         while (collected.length < currentZoneCount)
-          collected.push({ zone_name: '', is_confirmed: true, additional_info: '' });
-        document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
+          collected.push({ zone_name: '', actual: '' });
+        document.getElementById('dm-zones-container').innerHTML = _buildZoneRowsDimensional(c, collected);
       });
 
-      document.getElementById('dm-manual-accept').addEventListener('click', () =>
+      document.getElementById('dm-manual-accept')?.addEventListener('click', () =>
         _saveModalDimensional(c, 'Manual Accept'));
-      document.getElementById('dm-manual-reject').addEventListener('click', () =>
+      document.getElementById('dm-manual-reject')?.addEventListener('click', () =>
         _saveModalDimensional(c, 'Manual Reject'));
-      document.getElementById('dm-save').addEventListener('click', () =>
+      document.getElementById('dm-save')?.addEventListener('click', () =>
         _saveModalDimensional(c, null));
 
-      // Disposition section (only for Not Conform / Manual Reject)
-      const dispSel = document.getElementById('dm-disp-decision');
-      if (dispSel) {
-        _loadDispTypes().then(async types => {
-          const lastActive = existingDispositions.find(d => d.decision !== 'VOID');
-          const allowed = await allowedNextDecisions(lastActive?.decision ?? null);
-          const options = allowed.length > 0 ? types.filter(t => allowed.includes(t.code)) : types;
-          dispSel.innerHTML = options.map(t =>
-            `<option value="${t.code}">${t.label || t.code}</option>`).join('');
+      document.getElementById('dm-disp-open-btn')?.addEventListener('click', () => {
+        _closeDetailModal();
+        _openCharacterDispositionModal(c, async () => {
+          await _openDetailModal(c);
         });
-
-        document.getElementById('dm-disp-add-btn')?.addEventListener('click', async () => {
-          const decision   = dispSel.value;
-          const enteredBy  = document.getElementById('dm-disp-enteredby')?.value?.trim() || 'Inspector';
-          if (!decision) return;
-          try {
-            await api.characters.addDisposition(c.id, { decision, entered_by: enteredBy });
-            window.toast('Disposition added', 'success');
-            _closeDetailModal();
-            await _openDetailModal(c);
-          } catch (err) {
-            window.toast('Error: ' + err.message, 'error');
-          }
-        });
-      }
+      });
 
     } else {
       // LOT modal
@@ -1265,7 +1599,7 @@ async function render(id, root) {
             <textarea id="dm-notes" rows="2">${noteVal}</textarea>
           </div>
           <div class="dim-modal-footer">
-            <button id="dm-save" class="btn btn-primary">💾 Save</button>
+            ${pageCanWrite ? `<button id="dm-save" class="btn btn-primary">💾 Save</button>` : ''}
           </div>
         </div>`;
 
@@ -1304,7 +1638,7 @@ async function render(id, root) {
         document.getElementById('dm-zones-container').innerHTML = _buildZoneRows(collected);
       });
 
-      document.getElementById('dm-save').addEventListener('click', () => _saveModalLot(c));
+      document.getElementById('dm-save')?.addEventListener('click', () => _saveModalLot(c));
     }
   }
 
@@ -1333,22 +1667,20 @@ async function render(id, root) {
   }
 
   async function _saveModalDimensional(c, overrideResult) {
-    const parts = _collectDimPartRows();
-    if (parts.some(p => !p.actual.trim())) {
-      window.toast('Please fill all part measurements', 'error'); return;
+    const parts      = _collectDimPartRows();
+    const validParts = parts.filter(p => p.actual.trim());
+    const zones      = _collectZoneRowsDimensional();   // { zone_name, actual }
+    const noteVal    = document.getElementById('dm-notes')?.value ?? '';
+
+    if (!overrideResult && validParts.length === 0 && zones.length === 0) {
+      window.toast('En az bir ölçüm giriniz', 'error'); return;
     }
-    const noteVal = document.getElementById('dm-notes')?.value ?? '';
 
-    // Always compute the real actual value string (used for doc cell display)
-    const allVals = parts.flatMap(p =>
-      p.actual.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
-    );
-    const actualStr = allVals.length > 0
-      ? (Math.min(...allVals) === Math.max(...allVals)
-          ? String(allVals[0])
-          : allVals.join(' / '))
-      : parts.map(p => p.actual.trim()).join(' / ');
-
+    // Compute min/max from both parts and zones
+    const allVals = [
+      ...validParts.flatMap(p => p.actual.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v))),
+      ...zones.map(z => parseFloat(z.actual)).filter(v => !isNaN(v)),
+    ];
     let resultStr, isOk;
     if (overrideResult) {
       resultStr = overrideResult;
@@ -1361,32 +1693,54 @@ async function render(id, root) {
       isOk = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
     }
 
+    // Update detection (only for normal save, not override)
+    let updateReason = null;
+    let updateNote   = null;
+    if (!overrideResult) {
+      const existing = _charState[c.id]?.actual;
+      if (existing && existing !== resultStr) {
+        const answer = await _showUpdateConfirmDialog(existing, resultStr);
+        if (!answer) return;
+        updateReason = answer.reason;
+        updateNote   = answer.note;
+      }
+    }
+
     try {
-      const zones = _collectZoneRows();
       await api.numericResults.deleteByCharacter(c.id);
-      await api.zoneResults.deleteByCharacter(c.id);
+      await api.zoneResults.deleteByCharacter(c.id);  // clean up any legacy categorical zone data
       const baseSerial = detail.serial_number || 'Part';
-      for (let i = 0; i < parts.length; i++) {
+      for (let i = 0; i < validParts.length; i++) {
         await api.numericResults.create({
           character_id: c.id,
-          actual: parts[i].actual,
-          part_label: parts[i].part_label || `${baseSerial}-${i + 1}`,
+          actual: validParts[i].actual,
+          part_label: validParts[i].part_label || `${baseSerial}-${i + 1}`,
+          update_reason: updateReason,
+          update_note:   updateNote,
         });
       }
+      // Save zone measurements as NumericPartResults (zone_name → part_label)
       for (const z of zones) {
-        if (!z.zone_name.trim()) continue;
-        await api.zoneResults.create({
+        await api.numericResults.create({
           character_id: c.id,
-          zone_name: z.zone_name,
-          is_confirmed: z.is_confirmed,
-          additional_info: z.additional_info || null,
+          actual: z.actual,
+          part_label: z.zone_name,
+          update_reason: updateReason,
+          update_note:   updateNote,
         });
       }
       const updatePayload = { inspection_result: resultStr };
       if (noteVal) updatePayload.note = noteVal;
       await api.characters.update(c.id, updatePayload);
 
-      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: actualStr };
+      // Store zone info for panel display
+      const hasLimitsState = c.lower_limit !== 0 || c.upper_limit !== 0;
+      const zonePanelData = zones.map(z => {
+        const v = parseFloat(z.actual);
+        const ok = !hasLimitsState || (isNaN(v) ? true : v >= c.lower_limit && v <= c.upper_limit);
+        return { zone_name: z.zone_name, is_confirmed: ok };
+      });
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr, zones: zonePanelData, note: noteVal };
       // Update local chars array
       const charObj = _chars.find(ch => ch.id === c.id);
       if (charObj) { charObj.note = noteVal; charObj.inspection_result = resultStr; }
@@ -1394,8 +1748,9 @@ async function render(id, root) {
       _updateCharListItem(_activeIndex);
       _renderStats();
       _renderProgress();
-      _updateDocActualCell(c, actualStr, isOk);
+      _updateDocActualCell(c, resultStr, isOk);
       _closeDetailModal();
+      _activateChar(_activeIndex);
       window.toast('Saved', 'success');
     } catch (err) {
       window.toast('Save error: ' + err.message, 'error');
@@ -1404,7 +1759,7 @@ async function render(id, root) {
 
   async function _saveModalLot(c) {
     const parts = _collectLotPartRows();
-    const zones = _collectZoneRows();
+    const zones = _collectZoneRows().filter(z => z.zone_name.trim());
     const noteVal = document.getElementById('dm-notes')?.value ?? '';
 
     const hasNonConform = parts.some(p => !p.is_confirmed) || zones.some(z => !z.is_confirmed);
@@ -1423,7 +1778,6 @@ async function render(id, root) {
         });
       }
       for (const z of zones) {
-        if (!z.zone_name.trim()) continue;
         await api.zoneResults.create({
           character_id: c.id,
           zone_name: z.zone_name,
@@ -1436,7 +1790,7 @@ async function render(id, root) {
       await api.characters.update(c.id, updatePayload);
 
       const isOk = !hasNonConform;
-      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr };
+      _charState[c.id] = { result: isOk ? 'ok' : 'fail', actual: resultStr, zones, note: noteVal };
       const charObj = _chars.find(ch => ch.id === c.id);
       if (charObj) { charObj.note = noteVal; charObj.inspection_result = resultStr; }
 
@@ -1445,6 +1799,7 @@ async function render(id, root) {
       _renderProgress();
       _updateDocActualCell(c, resultStr, isOk);
       _closeDetailModal();
+      _activateChar(_activeIndex);
       window.toast('Saved', 'success');
     } catch (err) {
       window.toast('Save error: ' + err.message, 'error');
@@ -1465,23 +1820,43 @@ async function render(id, root) {
       for (const c of chars) {
         const r = c.inspection_result;
         if (!r || r === 'Unidentified') {
-          _charState[c.id] = { result: null, actual: '' };
+          _charState[c.id] = { result: null, actual: '', note: c.note ?? '', zones: [] };
         } else if (r === 'Manual Accept' || r === 'Conform') {
-          _charState[c.id] = { result: 'ok', actual: r };
+          _charState[c.id] = { result: 'ok', actual: r, note: c.note ?? '', zones: [] };
         } else if (r === 'Manual Reject' || r === 'Not Conform') {
-          _charState[c.id] = { result: 'fail', actual: r };
+          _charState[c.id] = { result: 'fail', actual: r, note: c.note ?? '', zones: [] };
         } else {
           // min/max result like "17.16 / 17.88" — parse to determine ok/fail
           const allVals = r.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
           if (allVals.length > 0) {
             const hasLimits = c.lower_limit !== 0 || c.upper_limit !== 0;
             const ok = !hasLimits || allVals.every(v => v >= c.lower_limit && v <= c.upper_limit);
-            _charState[c.id] = { result: ok ? 'ok' : 'fail', actual: r };
+            _charState[c.id] = { result: ok ? 'ok' : 'fail', actual: r, note: c.note ?? '', zones: [] };
           } else {
-            _charState[c.id] = { result: null, actual: '' };
+            _charState[c.id] = { result: null, actual: '', note: c.note ?? '', zones: [] };
           }
         }
       }
+
+      // Pre-populate _charDispState from existing dispositions (parallel fetch)
+      // Also fetch categorical zone results for attribute (LOT) chars that have been measured
+      const measuredLotChars = chars.filter(c => _isLot(c) && _charState[c.id]?.result !== null);
+      const [dispFetches, zoneFetches] = await Promise.all([
+        Promise.allSettled(chars.map(c => api.characters.listDispositions(c.id))),
+        Promise.allSettled(measuredLotChars.map(c => api.zoneResults.list(c.id))),
+      ]);
+      dispFetches.forEach((r, i) => {
+        _charDispState[chars[i].id] = r.status === 'fulfilled'
+          ? (r.value.filter(d => d.decision !== 'VOID')
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null)
+          : null;
+      });
+      zoneFetches.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value.length > 0) {
+          _charState[measuredLotChars[i].id].zones =
+            r.value.map(z => ({ zone_name: z.zone_name, is_confirmed: z.is_confirmed }));
+        }
+      });
 
       if (chars.length === 0) {
         container.innerHTML = `
@@ -1511,16 +1886,24 @@ async function render(id, root) {
       }
 
       // Build char list HTML
-      const charListItems = chars.map((c, i) => `
+      const charListItems = chars.map((c, i) => {
+        const disp = _charDispState[c.id];
+        const dispType = disp ? (_dispTypeCache || []).find(t => t.code === disp.decision) : null;
+        const dispBadge = disp
+          ? `<span class="disp-badge disp-${dispType?.css_class || 'unknown'}" style="font-size:10px;padding:1px 5px;margin-left:4px">${disp.decision}</span>`
+          : '';
+        return `
         <div class="dim-char-item" data-index="${i}" data-id="${c.id}">
           <span class="dim-char-dot-wrap">${_charBadgeHtml(c)}</span>
-          <span class="dim-char-text">
+          <span class="dim-char-text" style="min-width:0;flex:1">
             <span class="dim-char-no">${String(c.item_no).replace(/\s+/g, '')}</span>
             <span class="dim-char-dim">${c.dimension || ''}</span>
+            ${dispBadge}
           </span>
-          <button class="btn btn-ghost btn-xs dim-char-disp-btn" data-index="${i}"
-                  title="Disposition ekle" style="margin-left:auto;flex-shrink:0;">⚖</button>
-        </div>`).join('');
+          ${pageCanWrite ? `<button class="btn btn-ghost btn-xs dim-char-disp-btn" data-index="${i}"
+                  title="Disposition" style="margin-left:4px;flex-shrink:0;">⚖</button>` : ''}
+        </div>`;
+      }).join('');
 
       container.innerHTML = `
         <div class="card" style="padding:0">
@@ -1552,11 +1935,14 @@ async function render(id, root) {
         });
       });
 
-      // Disposition button — open detail modal directly
+      // Disposition button — open full disposition modal
       root.querySelectorAll('.dim-char-disp-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          _openDetailModal(_chars[Number(btn.dataset.index)]);
+          const idx = Number(btn.dataset.index);
+          _openCharacterDispositionModal(_chars[idx], async () => {
+            _activateChar(idx);
+          });
         });
       });
 
@@ -1589,6 +1975,13 @@ async function render(id, root) {
       // Activate first char + load doc viewer in parallel
       _activateChar(0);
       await _loadDocViewer();
+      // Inject all saved actual values into the doc viewer
+      for (const c of _chars) {
+        const state = _charState[c.id];
+        if (state?.actual && state.result !== null) {
+          _updateDocActualCell(c, state.actual, state.result === 'ok');
+        }
+      }
       // Re-highlight after doc loaded
       if (_chars.length > 0) _highlightDocRow(_chars[_activeIndex]);
 
@@ -1621,6 +2014,9 @@ async function render(id, root) {
   document.addEventListener('click', () => reportDropMenu.classList.remove('open'), { once: false });
   root.querySelector('#report-landscape-btn').addEventListener('click', () => {
     window.open(`/report.html?id=${id}&type=landscape`, '_blank');
+  });
+  root.querySelector('#report-detail-btn').addEventListener('click', () => {
+    window.open(api.inspections.detailReportUrl(id), '_blank');
   });
 
   // Durum değiştir
@@ -1750,7 +2146,7 @@ async function render(id, root) {
   );
 
   // Genel dosya yükleme — hata seç modal açılır
-  root.querySelector('#photo-upload-input').addEventListener('change', async (e) => {
+  root.querySelector('#photo-upload-input')?.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     e.target.value = '';
@@ -1758,7 +2154,7 @@ async function render(id, root) {
   });
 
   // Kamera
-  root.querySelector('#open-camera-btn').addEventListener('click', () => {
+  root.querySelector('#open-camera-btn')?.addEventListener('click', () => {
     openCameraModal(id, detail.defects, () => render(id, root));
   });
 
@@ -2106,7 +2502,7 @@ async function openDispositionModal(defect, onDone) {
   const decisionOptions = [
     { value: '', label: '— Karar Seçiniz —' },
     ...types
-      .filter(t => t.active && allowed.includes(t.code))
+      .filter(t => t.active && (allowed.length === 0 || allowed.includes(t.code)))
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(t => ({ value: t.code, label: t.label })),
   ];

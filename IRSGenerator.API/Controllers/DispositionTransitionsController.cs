@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Repositories;
 using IRSGenerator.Shared.Dtos.DispositionTransition;
@@ -6,6 +7,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/disposition-transitions")]
 [ApiController]
+[Authorize]
 public class DispositionTransitionsController : ControllerBase
 {
     private readonly IDispositionTransitionRepository _repo;
@@ -49,6 +51,7 @@ public class DispositionTransitionsController : ControllerBase
     // POST /api/disposition-transitions/bulk-set
     // Atomically replaces all transitions for a given fromCode
     [HttpPost("bulk-set")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> BulkSet([FromBody] DispositionTransitionBulkSetDto dto)
     {
         await _repo.BulkSetAsync(dto.FromCode, dto.ToCodes);

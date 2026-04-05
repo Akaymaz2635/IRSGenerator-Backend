@@ -1,0 +1,268 @@
+### WP-05 — Dispozisyon (Karar) Akışı
+### Özellik #22, #23, #24, #25, #26, #27
+### 5A: Görsel Hata (Defect) | 5B: Boyutsal Karakter | 5C: Yapılandırma
+
+@baseUrl = https://localhost:7164
+@contentType = application/json
+
+# ═══════════════════════════════════════════════════════════════
+# 5A — GÖRSEL HATA (DEFECT) DİSPOZİSYONLARI
+# ═══════════════════════════════════════════════════════════════
+
+# ─── TC-05.1 — Defect: İlk Karar Girişi ─────────────────────────────────────
+# Beklenen: 201 Created
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 1,
+  "decision": "REWORK",
+  "entered_by": "Mühendis",
+  "spec_ref": "AS4536",
+  "engineer": "Ali K."
+}
+
+###
+
+# Doğrulama: karar listede, tüm alanlar dolu
+GET {{baseUrl}}/api/dispositions?defect_id=1
+
+###
+
+# ─── TC-05.2 — Defect: Geçersiz İlk Karar (IsInitial=false olanlar) ─────────
+# CONFORMS başlangıç kararı olmadığından hata bekleniyor (400)
+# Not: Seed data'da CONFORMS IsInitial=false ise 400 dönmelidir.
+#      Yanıtı inceleyin ve seed data ile karşılaştırın.
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 2,
+  "decision": "CONFORMS"
+}
+
+###
+
+# ─── TC-05.3 — Geçiş Kuralı Doğrulama ───────────────────────────────────────
+# Beklenen: REWORK'ten geçilebilecek kodlar
+GET {{baseUrl}}/api/disposition-transitions/allowed?current_code=REWORK
+
+###
+
+# ─── TC-05.4 — IsNeutralizing Kontrolü ──────────────────────────────────────
+# Senaryo A: REWORK (IsNeutralizing=false) → tamamlama başarısız olmalı
+# Senaryo B: SCRAP (IsNeutralizing=true)  → tamamlama başarılı olmalı
+
+# Adım 1: Yeni muayene oluştur (WP-01 TC-01.1'e bakın)
+# Adım 2: Yeni hata ekle
+POST {{baseUrl}}/api/defects
+Content-Type: {{contentType}}
+
+{
+  "inspection_id": 2,
+  "defect_type_id": 1,
+  "depth": 0.3
+}
+
+###
+
+# Adım 3: REWORK ekle (nötralize edici değil)
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 3,
+  "decision": "REWORK",
+  "entered_by": "Test"
+}
+
+###
+
+# Adım 4: Tamamlama — HATA bekleniyor (REWORK nötralize edici değil)
+POST {{baseUrl}}/api/inspections/2/complete
+
+###
+
+# Adım 5: SCRAP ekle (nötralize edici)
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 3,
+  "decision": "SCRAP",
+  "entered_by": "Test",
+  "scrap_reason": "Kritik hata"
+}
+
+###
+
+# Adım 6: Tamamlama — BAŞARILI bekleniyor
+POST {{baseUrl}}/api/inspections/2/complete
+
+###
+
+# ─── TC-05.5 — MRB Kararı (Tüm Ek Alanlar) ──────────────────────────────────
+POST {{baseUrl}}/api/dispositions
+Content-Type: {{contentType}}
+
+{
+  "defect_id": 1,
+  "decision": "MRB_SUBMITTED",
+  "concession_no": "MRB-2026-001",
+  "engineer": "Ali K.",
+  "reinspector": "Mehmet D.",
+  "measurements_snapshot": "{\"depth\":0.5,\"width\":2.0}"
+}
+
+###
+
+# ═══════════════════════════════════════════════════════════════
+# 5B — BOYUTSAL KARAKTER (CHARACTER) DİSPOZİSYONLARI
+# ═══════════════════════════════════════════════════════════════
+
+# ─── TC-05.6 — Karakter: İlk Karar Girişi ────────────────────────────────────
+# Adım 1: Karakter oluştur (WP-02'ye bakın), inspection_result="Not Conform" yap
+# Adım 2: Disposition ekle
+# Beklenen: 201, character_id dolu, defect_id=null
+
+POST {{baseUrl}}/api/characters/1/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "USE_AS_IS",
+  "entered_by": "Mühendis A",
+  "spec_ref": "Drawing Rev.B",
+  "note": "Müşteri onaylı"
+}
+
+###
+
+# Doğrulama: character_id=1, defect_id=null
+GET {{baseUrl}}/api/characters/1/dispositions
+
+###
+
+# ─── TC-05.7 — Karakter: Tüm 13 Karar Tipi ──────────────────────────────────
+# Her başlangıç kararı için ayrı test çalıştırın.
+# IsInitial=true olanlar 201, IsInitial=false olanlar 400 dönmeli.
+
+POST {{baseUrl}}/api/characters/2/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "SCRAP",
+  "entered_by": "Test"
+}
+
+###
+
+POST {{baseUrl}}/api/characters/3/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "REPAIR",
+  "entered_by": "Test"
+}
+
+###
+
+POST {{baseUrl}}/api/characters/4/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "VOID",
+  "entered_by": "Test",
+  "void_reason": "Duplicate kayıt"
+}
+
+###
+
+# ─── TC-05.8 — Karakter: Muayene Tamamlamada Disposition Kontrolü ────────────
+# Adım 1: Yeni muayene oluştur
+# Adım 2: Karakter ekle (Not Conform)
+# Adım 3: Disposition olmadan tamamla → 400 bekleniyor
+
+# Muayene 3 mevcut değilse önce oluşturun.
+POST {{baseUrl}}/api/inspections/3/complete
+
+###
+
+# Adım 4: USE_AS_IS disposition ekle
+POST {{baseUrl}}/api/characters/5/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "USE_AS_IS",
+  "entered_by": "Test"
+}
+
+###
+
+# Adım 5: Yeniden tamamla → 204 bekleniyor
+POST {{baseUrl}}/api/inspections/3/complete
+
+###
+
+# ─── TC-05.9 — Karma Senaryo: Karakter + Hata ────────────────────────────────
+# Muayene 4: 1 karakter (Not Conform) + 1 hata
+# Sadece karaktere disposition ekle → tamamlama başarısız
+# Her ikisine de ekle → başarılı
+
+POST {{baseUrl}}/api/inspections/4/complete
+
+###
+
+# ═══════════════════════════════════════════════════════════════
+# 5C — YAPILANDIRMA TESTLERİ
+# ═══════════════════════════════════════════════════════════════
+
+# ─── TC-05.10 — Özel Karar Tipi ──────────────────────────────────────────────
+POST {{baseUrl}}/api/disposition-types
+Content-Type: {{contentType}}
+
+{
+  "code": "CUSTOM_HOLD",
+  "label": "Beklemede",
+  "css_class": "warning",
+  "is_neutralizing": false,
+  "is_initial": true,
+  "sort_order": 14
+}
+
+###
+
+# Yeni tipi kullan
+POST {{baseUrl}}/api/characters/1/dispositions
+Content-Type: {{contentType}}
+
+{
+  "decision": "CUSTOM_HOLD",
+  "entered_by": "Test"
+}
+
+###
+
+# ─── TC-05.11 — Bulk Transition Set ──────────────────────────────────────────
+# Beklenen: CUSTOM_HOLD'tan SCRAP ve REWORK'e geçiş tanımlandı
+POST {{baseUrl}}/api/disposition-transitions/bulk-set
+Content-Type: {{contentType}}
+
+{
+  "from_code": "CUSTOM_HOLD",
+  "to_codes": ["SCRAP", "REWORK"]
+}
+
+###
+
+# Doğrulama: izinli geçişler
+GET {{baseUrl}}/api/disposition-transitions/allowed?current_code=CUSTOM_HOLD
+
+###
+
+# ─── Yardımcı: Tüm karar tipleri ─────────────────────────────────────────────
+GET {{baseUrl}}/api/disposition-types
+
+###
+
+# ─── Yardımcı: Tüm geçiş kuralları ──────────────────────────────────────────
+GET {{baseUrl}}/api/disposition-transitions

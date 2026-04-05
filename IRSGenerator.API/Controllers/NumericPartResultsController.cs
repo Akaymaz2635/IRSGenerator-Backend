@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/numeric-part-results")]
 [ApiController]
+[Authorize]
 public class NumericPartResultsController : ControllerBase
 {
     private readonly INumericPartResultRepository _repo;
@@ -36,31 +38,38 @@ public class NumericPartResultsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<NumericPartResultReadDto>> Create(
         [FromBody] NumericPartResultCreateDto dto)
     {
         var entity = new NumericPartResult
         {
-            Actual      = dto.Actual,
-            PartLabel   = dto.PartLabel,
-            CharacterId = dto.CharacterId,
+            Actual       = dto.Actual,
+            PartLabel    = dto.PartLabel,
+            CharacterId  = dto.CharacterId,
+            UpdateReason = dto.UpdateReason,
+            UpdateNote   = dto.UpdateNote,
         };
         var created = await _repo.AddAsync(entity);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToDto(created));
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] NumericPartResultCreateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
         if (entity is null) return NotFound();
-        entity.Actual    = dto.Actual;
-        entity.PartLabel = dto.PartLabel;
+        entity.Actual        = dto.Actual;
+        entity.PartLabel     = dto.PartLabel;
+        entity.UpdateReason  = dto.UpdateReason;
+        entity.UpdateNote    = dto.UpdateNote;
         await _repo.UpdateAsync(entity);
         return NoContent();
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -70,6 +79,7 @@ public class NumericPartResultsController : ControllerBase
     }
 
     [HttpDelete]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> DeleteByCharacter(
         [FromQuery(Name = "character_id")] long? characterId)
     {
@@ -82,11 +92,13 @@ public class NumericPartResultsController : ControllerBase
 
     private static NumericPartResultReadDto ToDto(NumericPartResult e) => new()
     {
-        Id          = e.Id,
-        Actual      = e.Actual,
-        PartLabel   = e.PartLabel,
-        CharacterId = e.CharacterId,
-        CreatedAt   = e.CreatedAt,
-        UpdatedAt   = e.UpdatedAt,
+        Id           = e.Id,
+        Actual       = e.Actual,
+        PartLabel    = e.PartLabel,
+        CharacterId  = e.CharacterId,
+        UpdateReason = e.UpdateReason,
+        UpdateNote   = e.UpdateNote,
+        CreatedAt    = e.CreatedAt,
+        UpdatedAt    = e.UpdatedAt,
     };
 }

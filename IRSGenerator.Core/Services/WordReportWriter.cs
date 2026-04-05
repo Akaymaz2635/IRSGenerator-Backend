@@ -71,9 +71,32 @@ public class WordReportWriter
             .Where(c => c.NumericPartResults.Any())
             .ToDictionary(
                 c => (c.ItemNo ?? "").Replace(" ", "").ToUpperInvariant(),
-                c => string.Join(" / ", c.NumericPartResults
-                    .GroupBy(r => r.PartLabel)
-                    .Select(g => g.OrderByDescending(r => r.CreatedAt ?? DateTime.MinValue).First().Actual)));
+                c =>
+                {
+                    var allActuals = c.NumericPartResults
+                        .GroupBy(r => r.PartLabel)
+                        .Select(g => g.OrderByDescending(r => r.CreatedAt ?? DateTime.MinValue).First().Actual)
+                        .ToList();
+                    var nums = allActuals
+                        .SelectMany(a => a.Split('/', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries))
+                        .Select(s => double.TryParse(s, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var d) ? (double?)d : null)
+                        .Where(d => d.HasValue).Select(d => d!.Value).ToList();
+                    if (!nums.Any()) return string.Join(" / ", allActuals);
+                    var min = nums.Min(); var max = nums.Max();
+                    return Math.Abs(max - min) < 1e-9 ? min.ToString("G") : $"{min} / {max}";
+                });
+
+        // Also include attribute (categorical) characters — their result is stored in InspectionResult
+        foreach (var c in characters.Where(c =>
+            !c.NumericPartResults.Any() &&
+            !string.IsNullOrEmpty(c.InspectionResult) &&
+            c.InspectionResult != "Unidentified"))
+        {
+            var key = (c.ItemNo ?? "").Replace(" ", "").ToUpperInvariant();
+            if (!actuals.ContainsKey(key))
+                actuals[key] = c.InspectionResult;  // "Conform" or "Not Conform"
+        }
 
         foreach (var table in body.Elements<Table>())
         {
@@ -115,24 +138,62 @@ public class WordReportWriter
                 var itemNo = itemNoRaw.Replace(" ", "").ToUpperInvariant();
                 if (!actuals.TryGetValue(itemNo, out var actual)) continue;
 
-                // Write actual value into cell
+                // Write actual value into cell, preserving existing run formatting
                 var cell = cells[actualCol];
                 var para = cell.Elements<Paragraph>().FirstOrDefault()
                     ?? cell.AppendChild(new Paragraph());
-                foreach (var r in para.Elements<Run>().ToList()) r.Remove();
-                para.AppendChild(new Run(new Text(actual)));
+                var existingRuns = para.Elements<Run>().ToList();
+                var existingProps = existingRuns.FirstOrDefault()
+                    ?.Elements<RunProperties>().FirstOrDefault()
+                    ?.CloneNode(true) as RunProperties;
+                foreach (var r in existingRuns) r.Remove();
 
-                // Color cell red if character is Not Conform
                 var ch = characters.FirstOrDefault(c =>
                     (c.ItemNo ?? "").Replace(" ", "").ToUpperInvariant() == itemNo);
-                if (ch?.InspectionResult == "Not Conform")
+                bool isNc = ch != null && IsNonConformChar(ch);
+                bool hasLimits = ch != null && (ch.LowerLimit != 0 || ch.UpperLimit != 0);
+                var parts = actual.Split('/').Select(s => s.Trim()).ToList();
+
+                if (isNc && hasLimits && parts.Count > 1)
                 {
-                    var tcp = cell.TableCellProperties ?? cell.PrependChild(new TableCellProperties());
-                    var shading = tcp.Elements<Shading>().FirstOrDefault()
-                        ?? tcp.AppendChild(new Shading());
-                    shading.Val = ShadingPatternValues.Clear;
-                    shading.Color = "auto";
-                    shading.Fill = "FF0000";
+                    // Multi-value (e.g. "12 / 145"): highlight only the OOT values
+                    for (int pi = 0; pi < parts.Count; pi++)
+                    {
+                        if (pi > 0)
+                            para.AppendChild(new Run(new Text(" / ") { Space = SpaceProcessingModeValues.Preserve }));
+
+                        var partRun = new Run(new Text(parts[pi]));
+                        if (existingProps != null)
+                            partRun.PrependChild((RunProperties)existingProps.CloneNode(true));
+
+                        bool oot = double.TryParse(parts[pi],
+                            System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var pv) &&
+                            ((ch!.LowerLimit != 0 && pv < ch.LowerLimit) ||
+                             (ch.UpperLimit != 0 && pv > ch.UpperLimit));
+
+                        if (oot)
+                        {
+                            var rp = partRun.GetFirstChild<RunProperties>()
+                                     ?? partRun.PrependChild(new RunProperties());
+                            rp.AppendChild(new Highlight { Val = HighlightColorValues.Yellow });
+                        }
+                        para.AppendChild(partRun);
+                    }
+                }
+                else
+                {
+                    // Single value or no limits: one run, highlight whole text if OOT
+                    var newRun = new Run(new Text(actual));
+                    if (existingProps != null) newRun.PrependChild(existingProps);
+
+                    if (isNc)
+                    {
+                        var rp = newRun.GetFirstChild<RunProperties>()
+                                 ?? newRun.PrependChild(new RunProperties());
+                        rp.AppendChild(new Highlight { Val = HighlightColorValues.Yellow });
+                    }
+                    para.AppendChild(newRun);
                 }
             }
         }
@@ -316,6 +377,20 @@ public class WordReportWriter
         => string.Join(" ", cell.Elements<Paragraph>()
             .SelectMany(p => p.Elements<Run>())
             .Select(r => r.InnerText)).Trim();
+
+    private static bool IsNonConformChar(Character c)
+    {
+        if (string.IsNullOrEmpty(c.InspectionResult)) return false;
+        var ncWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "Not Conform", "Manual Reject", "Fail", "Failed" };
+        if (ncWords.Contains(c.InspectionResult)) return true;
+        if (c.LowerLimit == 0 && c.UpperLimit == 0) return false;
+        return c.InspectionResult
+            .Split('/', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries)
+            .Any(seg => double.TryParse(seg, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var v) &&
+                ((c.LowerLimit != 0 && v < c.LowerLimit) || (c.UpperLimit != 0 && v > c.UpperLimit)));
+    }
 
     private static void AppendDimensionalDetailSection(WordprocessingDocument doc, List<Character> characters)
     {

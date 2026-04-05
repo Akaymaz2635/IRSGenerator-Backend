@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/disposition-types")]
 [ApiController]
+[Authorize]
 public class DispositionTypesController : ControllerBase
 {
     private readonly IDispositionTypeRepository _repo;
@@ -35,6 +37,7 @@ public class DispositionTypesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<DispositionTypeReadDto>> Create([FromBody] DispositionTypeCreateDto dto)
     {
         var entity = new DispositionType
@@ -52,6 +55,7 @@ public class DispositionTypesController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] DispositionTypeUpdateDto dto)
     {
         var entity = await _repo.GetByIdAsync(id);
@@ -70,6 +74,7 @@ public class DispositionTypesController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);

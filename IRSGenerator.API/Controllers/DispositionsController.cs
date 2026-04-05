@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using IRSGenerator.Core.Entities;
 using IRSGenerator.Core.Repositories;
@@ -7,6 +8,7 @@ namespace IRSGenerator.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class DispositionsController : ControllerBase
 {
     private readonly IDispositionRepository _repo;
@@ -39,6 +41,7 @@ public class DispositionsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<DispositionReadDto>> Create([FromBody] DispositionCreateDto dto)
     {
         if (!string.IsNullOrWhiteSpace(dto.Decision))
@@ -53,7 +56,7 @@ public class DispositionsController : ControllerBase
             DefectId = dto.DefectId,
             Decision = dto.Decision,
             EnteredBy = dto.EnteredBy,
-            DecidedAt = dto.DecidedAt,
+            DecidedAt = dto.DecidedAt.HasValue ? DateTime.SpecifyKind(dto.DecidedAt.Value, DateTimeKind.Utc) : null,
             Note = dto.Note ?? "",
             SpecRef = dto.SpecRef,
             Engineer = dto.Engineer,
@@ -69,6 +72,7 @@ public class DispositionsController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
         var entity = await _repo.GetByIdAsync(id);

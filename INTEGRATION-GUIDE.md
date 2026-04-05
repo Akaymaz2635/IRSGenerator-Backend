@@ -1,214 +1,458 @@
-# QualiSight UI Entegrasyon Rehberi
+# QualiSight — Mimari Referans & Güncelleme Kılavuzu
 
-Bu klasördeki dosyalar IRSGenerator projesine kopyalanarak QualiSight görsel muayene
-UI'sini backend'e bağlar. Her OS'ta tarayıcıdan erişim sağlar.
-
----
-
-## AŞAMA 1 — Önceki entegrasyondan gelen dosyalar (değişmeden geçerli)
-
-### IRSGenerator.API/Controllers/ klasörüne kopyala (replace):
-Aşağıdaki dosyalar önceki entegrasyonda eklenmiş olmalı:
-- DefectFieldsController.cs, DefectsController.cs, DefectTypesController.cs
-- DispositionsController.cs, InspectionsController.cs, PhotosController.cs
-- VisualSystemConfigController.cs
-
-### IRSGenerator.Core/Entities/ klasörüne kopyala:
-- Defect.cs, DefectField.cs, DefectType.cs, Disposition.cs
-- Photo.cs, PhotoDefect.cs, VisualSystemConfig.cs
-
-### IRSGenerator.Core/Repositories/ klasörüne kopyala:
-- IDefectRepository.cs, IDefectFieldRepository.cs, IDefectTypeRepository.cs
-- IDispositionRepository.cs, IPhotoRepository.cs, IVisualSystemConfigRepository.cs
-
-### IRSGenerator.Data/Repositories/ klasörüne kopyala:
-- DefectRepository.cs, DefectFieldRepository.cs, DefectTypeRepository.cs
-- DispositionRepository.cs, PhotoRepository.cs, VisualSystemConfigRepository.cs
-
-### IRSGenerator.Shared/Dtos/ klasörüne kopyala:
-- Defect/, DefectField/, DefectType/, Disposition/
+Bu belge, sistemin tam entegre hâlini ve gelecekte herhangi bir bileşen güncellendiğinde
+**hangi dosyaların değişmesi gerektiğini** gösteren referans kılavuzudur.
 
 ---
 
-## AŞAMA 2 — Bu entegrasyon (QualiSight UI bağlantısı)
+## Bölümler
 
-### 2.1 Tüm mevcut Controllers'ları replace et:
-```
-Backend/IRSGenerator.API/Controllers/  →  IRSGenerator.API/Controllers/
-```
-(Tüm dosyalar dahil: yeni ProjectsController, AuthController, UsersController)
-
-### 2.2 Tüm Entities'leri güncelle:
-
-**Inspection.cs** — Tamamen replace et (yeni alanlar: VisualProjectId, PartNumber, SerialNumber, OperationNumber, Inspector)
-
-**VisualProject.cs** — YENİ dosya, kopyala:
-```
-Backend/IRSGenerator.Core/Entities/VisualProject.cs
-```
-
-**User.cs — KRİTİK:**
-Mevcut User.cs'i silme. Sadece şu 3 alanı ekle:
-```csharp
-public string? PasswordHash { get; set; }
-public string Role { get; set; } = "inspector";
-public bool Active { get; set; } = true;
-```
-
-### 2.3 Repository arayüzlerini güncelle:
-```
-Backend/IRSGenerator.Core/Repositories/  →  IRSGenerator.Core/Repositories/
-```
-(IInspectionRepository ve IPhotoRepository değişti, IVisualProjectRepository ve IUserRepository eklendi)
-
-### 2.4 Repository implementasyonlarını güncelle:
-```
-Backend/IRSGenerator.Data/Repositories/  →  IRSGenerator.Data/Repositories/
-```
-(InspectionRepository ve PhotoRepository değişti, VisualProjectRepository ve UserRepository eklendi)
-
-### 2.5 DTOs'leri güncelle:
-```
-Backend/IRSGenerator.Shared/Dtos/  →  IRSGenerator.Shared/Dtos/
-```
-(Inspection/ değişti, Project/, User/, Auth/ eklendi)
-
-### 2.6 IRSGeneratorDbContext.cs — Şunları ekle:
-```
-Backend/IRSGenerator.Data/IRSGeneratorDbContext.cs
-```
-Bu dosyayı tamamen replace et. (VisualProject DbSet + yeni model konfigürasyonları eklendi)
-
-### 2.7 Program.cs — Tamamen replace et:
-```
-Backend/IRSGenerator.API/Program.cs
-```
-(UseStaticFiles, snake_case JSON, IVisualProjectRepository, IUserRepository kayıtları)
-
-### 2.8 wwwroot klasörünü kopyala:
-```
-Backend/IRSGenerator.API/wwwroot/  →  IRSGenerator.API/wwwroot/
-```
-(QualiSight UI statik dosyaları — index.html, static/, photos/)
+1. [Mevcut Sistem Mimarisi](#1-mevcut-sistem-mimarisi)
+2. [Katman → Dosya Haritası](#2-katman--dosya-haritası)
+3. [Özellik Alanlarına Göre Dosya Grupları](#3-özellik-alanlarına-göre-dosya-grupları)
+4. [Güncelleme Senaryoları](#4-güncelleme-senaryoları)
+5. [NuGet Paket Bağımlılıkları](#5-nuget-paket-bağımlılıkları)
+6. [Veritabanı Migration Zinciri](#6-veritabanı-migration-zinciri)
+7. [Frontend Modül Bağımlılıkları](#7-frontend-modül-bağımlılıkları)
 
 ---
 
-## AŞAMA 3 — UserConfiguration.cs güncelleme
+## 1. Mevcut Sistem Mimarisi
 
-`IRSGenerator.Data/Configurations/UserConfiguration.cs` dosyasına yeni sütunları ekle:
+QualiSight, tek bir ASP.NET Core 8 uygulaması içinde iki ana iş modülü barındırır:
 
-```csharp
-builder.Property(u => u.PasswordHash).HasMaxLength(64).IsRequired(false);
-builder.Property(u => u.Role).HasMaxLength(20).HasDefaultValue("inspector").IsRequired();
-builder.Property(u => u.Active).HasDefaultValue(true).IsRequired();
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  IRSGenerator.API  (ASP.NET Core 8 — Web API + Statik SPA)       │
+│                                                                  │
+│  Modül A: IRS (Boyutsal Muayene & Ölçüm)                         │
+│  Modül B: QualiSight (Görsel Muayene & Defekt)                   │
+│  Modül C: NCM (Uygunsuzluk Yönetimi & Disposition Sheet)         │
+├──────────────────────────────────────────────────────────────────┤
+│  IRSGenerator.Core  (Domain — Entity, Repository Arayüzü, Servis)│
+├──────────────────────────────────────────────────────────────────┤
+│  IRSGenerator.Data  (EF Core — DbContext, Repository Impl, Migration)│
+├──────────────────────────────────────────────────────────────────┤
+│  IRSGenerator.Shared  (DTO'lar — yalnızca POCO sınıflar)         │
+├──────────────────────────────────────────────────────────────────┤
+│  IRSGenerator.Tests  (xUnit — servis unit testleri)              │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                    PostgreSQL 14+
 ```
 
-Ayrıca seed data'daki User nesnelerine `Role = "admin"` ve `Active = true` ekle.
+**Kimlik Doğrulama:** HttpOnly cookie (`qc_auth`), SHA256 şifre hash.
+**JSON:** snake_case (`PropertyNamingPolicy.SnakeCaseLower`).
+**Frontend:** Vanilla JS ES Modules, hash tabanlı routing, build aracı yok.
 
 ---
 
-## AŞAMA 4 — Disposition Tipleri (Dinamik Workflow)
+## 2. Katman → Dosya Haritası
 
-### 4.1 Yeni entity dosyalarını kopyala:
+### IRSGenerator.API/Controllers/ (20 controller)
+
+| Dosya | Route | Yetki |
+|---|---|---|
+| `AuthController.cs` | `/api/auth` | Herkese açık (login/logout/me) |
+| `ProjectsController.cs` | `/api/projects` | GET: herkes; CUD: AdminOnly |
+| `InspectionsController.cs` | `/api/inspections` | GET: herkes; CUD: CanWrite |
+| `CharactersController.cs` | `/api/characters` | GET: herkes; CUD: CanWrite |
+| `NumericPartResultsController.cs` | `/api/numeric-part-results` | GET: herkes; CUD: CanWrite |
+| `CategoricalPartResultsController.cs` | `/api/categorical-part-results` | GET: herkes; CUD: CanWrite |
+| `CategoricalZoneResultsController.cs` | `/api/categorical-zone-results` | GET: herkes; CUD: CanWrite |
+| `DefectsController.cs` | `/api/defects` | GET: herkes; CUD: CanWrite |
+| `DefectTypesController.cs` | `/api/defect-types` | GET: herkes; CUD: AdminOnly |
+| `DefectFieldsController.cs` | `/api/defect-fields` | GET: herkes; CUD: AdminOnly |
+| `DispositionsController.cs` | `/api/dispositions` | GET: herkes; CUD: CanWrite |
+| `DispositionTypesController.cs` | `/api/disposition-types` | GET: herkes; CUD: AdminOnly |
+| `DispositionTransitionsController.cs` | `/api/disposition-transitions` | GET: herkes; bulk-set: AdminOnly |
+| `PhotosController.cs` | `/api/photos` | GET: herkes; CUD: CanWrite |
+| `VisualSystemConfigController.cs` | `/api/system-config` | GET: herkes; PUT: AdminOnly |
+| `UsersController.cs` | `/api/users` | AdminOnly |
+| `NcmController.cs` | `/api/ncm` | generate: CanWriteNcm; templates: AdminOnly |
+| `CauseCodesController.cs` | `/api/cause-codes` | GET: herkes; CUD: AdminOnly |
+| `NcmDispositionTypesController.cs` | `/api/ncm-disposition-types` | GET: herkes; CUD: AdminOnly |
+| *(yok — IRSProjects API doğrudan InspectionsController üzerinden)* | — | — |
+
+> **Yetki Politikaları:** `AdminOnly` = admin rolü; `CanWrite` = inspector hariç herkes;
+> `CanWriteNcm` = engineer + admin.
+
+### IRSGenerator.Core/Entities/ (24 entity)
+
+| Dosya | Açıklama |
+|---|---|
+| `BaseEntity.cs` | `Id`, `CreatedAt`, `UpdatedAt`, `CreatedById`, `UpdatedById` |
+| `User.cs` | EmployeeId, DisplayName, PasswordHash, Role, Active |
+| `Role.cs`, `Permission.cs`, `UserRole.cs`, `RolePermission.cs` | RBAC tabloları |
+| `IRSProject.cs` | IRS proje şablonu |
+| `Character.cs` | Muayene kalemi (dimensional / LOT) |
+| `NumericPartResult.cs` | Sayısal ölçüm + `UpdateReason` + `UpdateNote` |
+| `CategoricalPartResult.cs` | Kategorik sonuç + `UpdateReason` |
+| `CategoricalZoneResult.cs` | Bölge bazlı kategorik sonuç |
+| `VisualProject.cs` | Görsel muayene proje tanımı |
+| `Inspection.cs` | Muayene örneği |
+| `Defect.cs` | Görsel kusur |
+| `DefectType.cs` | Kusur tipi tanımı |
+| `DefectField.cs` | Kusur tipi özel alanı |
+| `Disposition.cs` | Karar kaydı (defect veya character bağlantılı) |
+| `DispositionType.cs` | Karar tipi (code, label, cssClass) |
+| `DispositionTransition.cs` | State machine geçiş kuralı |
+| `Photo.cs`, `PhotoDefect.cs` | Fotoğraf ve defekt eşlemesi |
+| `VisualSystemConfig.cs` | Key-value konfigürasyon |
+| `CauseCode.cs` | NCM kök neden kodu |
+| `NcmDispositionType.cs` | NCM disposition tipi + Word şablon dosyası |
+
+### IRSGenerator.Core/Repositories/ (21 interface)
+
+Her entity için birer arayüz dosyası: `I{Entity}Repository.cs`.
+Temel arayüz: `IBaseRepository<T>` — `GetAsync`, `GetAllAsync`, `AddAsync`, `UpdateAsync`, `RemoveAsync`, `RemoveRange`.
+
+### IRSGenerator.Core/Services/ (5 servis)
+
+| Dosya | Görev |
+|---|---|
+| `OlcuParser.cs` | Dimension string → alt/üst limit (15+ format) |
+| `LimitCatcher.cs` | OlcuParser çıktısını `double[2]` formatına normalize eder |
+| `WordOpSheetParser.cs` | `.docx` op-sheet → `Character[]` |
+| `WordReportWriter.cs` | Muayene verisi → Word raporu (.docx) |
+| `NcmSheetGenerator.cs` | NCM disposition Word şablonu doldurur → .docx/.zip |
+
+### IRSGenerator.Data/Repositories/ (21 implementasyon)
+
+`IRSGenerator.Core/Repositories/` içindeki her interface için EF Core implementasyonu.
+Dosya adı deseni: `{Entity}Repository.cs`.
+
+### IRSGenerator.Data/Migrations/ (8 migration)
+
+Ayrıntı için bkz. [Bölüm 6](#6-veritabanı-migration-zinciri).
+
+### IRSGenerator.Shared/Dtos/ (klasör yapısı)
+
 ```
-Backend/IRSGenerator.Core/Entities/DispositionType.cs     → IRSGenerator.Core/Entities/
-Backend/IRSGenerator.Core/Entities/DispositionTransition.cs → IRSGenerator.Core/Entities/
+Dtos/
+├── Auth/          LoginRequestDto, LoginResponseDto, LoginUserDto
+├── Project/       ProjectCreateDto, ProjectReadDto, ProjectUpdateDto
+├── Inspection/    InspectionCreateDto, InspectionReadDto, InspectionUpdateDto
+├── Character/     CharacterCreateDto, CharacterReadDto, CharacterUpdateDto
+├── NumericPartResult/     Create + Read Dto
+├── CategoricalPartResult/ Create + Read Dto
+├── CategoricalZoneResult/ Create + Read Dto
+├── Defect/        DefectCreateDto, DefectReadDto, DefectUpdateDto
+├── DefectType/    DefectTypeCreateDto, DefectTypeReadDto, DefectTypeUpdateDto
+├── DefectField/   DefectFieldCreateDto, DefectFieldReadDto, DefectFieldUpdateDto
+├── Disposition/   DispositionCreateDto, DispositionReadDto
+├── DispositionType/       Create + Read + Update Dto
+├── DispositionTransition/ Read + BulkSet Dto
+├── Photo/         PhotoCreateDto, PhotoReadDto
+├── User/          UserCreateDto, UserReadDto, UserUpdateDto
+├── VisualSystemConfig/    Read + Update Dto
+├── CauseCode/     CauseCodeCreateDto, CauseCodeReadDto, CauseCodeUpdateDto
+├── NcmDispositionType/    Create + Read + Update Dto
+└── Ncm/           GenerateDispositionSheetDto, NcmSheetItemDto, NcmInspectionDataDto, vb.
 ```
 
-### 4.2 Yeni repository arayüzlerini kopyala:
+### IRSGenerator.API/wwwroot/static/js/pages/ (22 sayfa)
+
+| Dosya | Sayfa |
+|---|---|
+| `dashboard.js` | Ana panel |
+| `inspections.js` | Muayene listesi |
+| `inspection-form.js` | Muayene oluştur/düzenle |
+| `inspection-detail.js` | Muayene detayı (defekt + disposition + dimensional panel) |
+| `settings.js` | Kullanıcı ayarları |
+| `irs-projects.js` | IRS proje listesi |
+| `irs-project-detail.js` | IRS proje detayı |
+| `character-detail.js` | Karakter detayı |
+| `ncm.js` | NCM listesi |
+| `ncm-detail.js` | NCM detay + disposition sheet üretme |
+| `nonconformance-descriptions.js` | NC açıklama listesi |
+| `analytics.js` | Analitik panel |
+| `admin-dashboard.js` | Yönetici paneli |
+| `admin-users.js` | Kullanıcı yönetimi |
+| `admin-projects.js` | Proje yönetimi |
+| `admin-defect-types.js` | Kusur tipi yönetimi |
+| `admin-defect-fields.js` | Kusur alanı yönetimi |
+| `admin-disposition-types.js` | Disposition tipi yönetimi |
+| `admin-ncm-disposition-types.js` | NCM disposition tipi yönetimi |
+| `admin-cause-codes.js` | Kök neden kodu yönetimi |
+| `admin-config.js` | Sistem konfigürasyonu |
+| `admin-backup.js` | Yedekleme yönetimi |
+
+---
+
+## 3. Özellik Alanlarına Göre Dosya Grupları
+
+### Modül A — IRS (Boyutsal Muayene)
+
 ```
-Backend/IRSGenerator.Core/Repositories/IDispositionTypeRepository.cs → IRSGenerator.Core/Repositories/
-Backend/IRSGenerator.Core/Repositories/IDispositionTransitionRepository.cs → IRSGenerator.Core/Repositories/
+Core/Entities/         IRSProject.cs, Character.cs,
+                       NumericPartResult.cs, CategoricalPartResult.cs, CategoricalZoneResult.cs
+Core/Repositories/     IIRSProjectRepository.cs, ICharacterRepository.cs,
+                       INumericPartResultRepository.cs, ICategoricalPartResultRepository.cs,
+                       ICategoricalZoneResultRepository.cs
+Core/Services/         OlcuParser.cs, LimitCatcher.cs, WordOpSheetParser.cs, WordReportWriter.cs
+Data/Repositories/     IRSProjectRepository.cs, CharacterRepository.cs,
+                       NumericPartResultRepository.cs, CategoricalPartResultRepository.cs,
+                       CategoricalZoneResultRepository.cs
+Shared/Dtos/           Character/, NumericPartResult/, CategoricalPartResult/, CategoricalZoneResult/
+API/Controllers/       CharactersController.cs, NumericPartResultsController.cs,
+                       CategoricalPartResultsController.cs, CategoricalZoneResultsController.cs
+wwwroot/pages/         irs-projects.js, irs-project-detail.js, character-detail.js,
+                       inspection-detail.js (Dimensional panel)
 ```
 
-### 4.3 Yeni repository implementasyonlarını kopyala:
+### Modül B — QualiSight (Görsel Muayene)
+
 ```
-Backend/IRSGenerator.Data/Repositories/DispositionTypeRepository.cs → IRSGenerator.Data/Repositories/
-Backend/IRSGenerator.Data/Repositories/DispositionTransitionRepository.cs → IRSGenerator.Data/Repositories/
+Core/Entities/         VisualProject.cs, Inspection.cs, Defect.cs, DefectType.cs,
+                       DefectField.cs, Disposition.cs, DispositionType.cs,
+                       DispositionTransition.cs, Photo.cs, PhotoDefect.cs, VisualSystemConfig.cs
+Core/Repositories/     IVisualProjectRepository.cs, IInspectionRepository.cs,
+                       IDefectRepository.cs, IDefectTypeRepository.cs, IDefectFieldRepository.cs,
+                       IDispositionRepository.cs, IDispositionTypeRepository.cs,
+                       IDispositionTransitionRepository.cs, IPhotoRepository.cs,
+                       IVisualSystemConfigRepository.cs
+Data/Repositories/     VisualProjectRepository.cs, InspectionRepository.cs,
+                       DefectRepository.cs, DefectTypeRepository.cs, DefectFieldRepository.cs,
+                       DispositionRepository.cs, DispositionTypeRepository.cs,
+                       DispositionTransitionRepository.cs, PhotoRepository.cs,
+                       VisualSystemConfigRepository.cs
+Shared/Dtos/           Project/, Inspection/, Defect/, DefectType/, DefectField/,
+                       Disposition/, DispositionType/, DispositionTransition/, Photo/
+API/Controllers/       ProjectsController.cs, InspectionsController.cs, DefectsController.cs,
+                       DefectTypesController.cs, DefectFieldsController.cs,
+                       DispositionsController.cs, DispositionTypesController.cs,
+                       DispositionTransitionsController.cs, PhotosController.cs,
+                       VisualSystemConfigController.cs
+wwwroot/pages/         inspections.js, inspection-form.js, inspection-detail.js,
+                       analytics.js
 ```
 
-### 4.4 Yeni DTO klasörlerini kopyala:
+### Modül C — NCM (Uygunsuzluk Yönetimi)
+
 ```
-Backend/IRSGenerator.Shared/Dtos/DispositionType/     → IRSGenerator.Shared/Dtos/
-Backend/IRSGenerator.Shared/Dtos/DispositionTransition/ → IRSGenerator.Shared/Dtos/
+Core/Entities/         CauseCode.cs, NcmDispositionType.cs
+Core/Repositories/     ICauseCodeRepository.cs, INcmDispositionTypeRepository.cs
+Core/Services/         NcmSheetGenerator.cs
+Data/Repositories/     CauseCodeRepository.cs, NcmDispositionTypeRepository.cs
+Shared/Dtos/           CauseCode/, NcmDispositionType/, Ncm/
+API/Controllers/       NcmController.cs, CauseCodesController.cs, NcmDispositionTypesController.cs
+API/DispositionTemplates/ ACCEPT.docx, CTP&MRB.docx, CTP&R-I.docx, CTP&R-W.docx,
+                          DEBURR R-W.docx, EMPTY.docx, MRB.docx, RETURN-TO-VENDOR.docx,
+                          SCRAP-IND.docx, SCRAP-LOT.docx, STD-OP-R-W.docx, WELD R-W.docx
+wwwroot/pages/         ncm.js, ncm-detail.js, nonconformance-descriptions.js,
+                       admin-ncm-disposition-types.js, admin-cause-codes.js
 ```
 
-### 4.5 Yeni Controller dosyalarını kopyala:
+### Auth & Kullanıcı Yönetimi
+
 ```
-Backend/IRSGenerator.API/Controllers/DispositionTypesController.cs → IRSGenerator.API/Controllers/
-Backend/IRSGenerator.API/Controllers/DispositionTransitionsController.cs → IRSGenerator.API/Controllers/
+Core/Entities/         User.cs, Role.cs, Permission.cs, UserRole.cs, RolePermission.cs
+Core/Repositories/     IUserRepository.cs, IRoleRepository.cs, IPermissionRepository.cs
+Data/Repositories/     UserRepository.cs, RoleRepository.cs, PermissionRepository.cs
+Shared/Dtos/           Auth/, User/
+API/Controllers/       AuthController.cs, UsersController.cs
+API/Extensions/        ServiceExtensions.cs  (politika tanımları: AdminOnly, CanWrite, CanWriteNcm)
+API/Program.cs         Cookie auth konfigürasyonu
 ```
 
 ---
 
-## AŞAMA 5 — Migration oluştur
+## 4. Güncelleme Senaryoları
 
-```powershell
-Add-Migration AddQualiSightWithDispositionTypes
-Update-Database
+### 4.1 Yeni bir entity (tablo) eklemek
+
+Aşağıdaki dosyalar sırasıyla değişir/oluşturulur:
+
+```
+1. Core/Entities/{YeniEntity}.cs                        YENİ
+2. Core/Repositories/I{YeniEntity}Repository.cs         YENİ
+3. Data/Repositories/{YeniEntity}Repository.cs          YENİ
+4. Data/IRSGeneratorDbContext.cs                        DEĞİŞİR  (DbSet ekle)
+5. Shared/Dtos/{YeniEntity}/...Dto.cs                   YENİ
+6. API/Controllers/{YeniEntity}sController.cs           YENİ
+7. API/Extensions/ServiceExtensions.cs                  DEĞİŞİR  (DI kaydı)
+8. dotnet ef migrations add ...                         YENİ migration
+9. wwwroot/static/js/pages/{yeni-sayfa}.js              YENİ (gerekirse)
+10. wwwroot/static/js/api.js                            DEĞİŞİR  (yeni API grubu)
+11. wwwroot/index.html veya app.js                      DEĞİŞİR  (route/link ekle)
 ```
 
-Migration şunları ekleyecek:
-- `VisualProjects` tablosu (yeni)
-- `DispositionTypes` tablosu + seed (13 kayıt)
-- `DispositionTransitions` tablosu + seed (39 geçiş kuralı)
-- `Inspections` tablosuna: `VisualProjectId`, `PartNumber`, `SerialNumber`, `OperationNumber`, `Inspector` sütunları
-- `Inspections.IrsProjectId` artık nullable
-- `Users` tablosuna: `PasswordHash`, `Role`, `Active` sütunları
+### 4.2 Mevcut entity'ye alan eklemek
+
+```
+1. Core/Entities/{Entity}.cs                            DEĞİŞİR  (property ekle)
+2. Shared/Dtos/{Entity}/...Dto.cs                       DEĞİŞİR  (DTO'ya ekle)
+3. API/Controllers/{Entity}sController.cs               DEĞİŞİR  (mapping güncelle)
+4. dotnet ef migrations add Add{Alan}To{Entity}         YENİ migration
+5. wwwroot/static/js/pages/{ilgili-sayfa}.js            DEĞİŞİR  (UI güncelle)
+```
+
+### 4.3 Yeni NCM disposition şablonu eklemek
+
+```
+1. API/DispositionTemplates/{YeniSablon}.docx           YENİ  (Word template)
+2. NcmDispositionType kaydını DB'ye ekle:
+   POST /api/ncm-disposition-types
+   { "code": "YENİ", "label": "...", "template_file_name": "YeniSablon.docx" }
+   -- Admin panelinden de yapılabilir.
+```
+
+### 4.4 OlcuParser'a yeni ölçüm formatı eklemek
+
+```
+1. Core/Services/OlcuParser.cs     DEĞİŞİR  (yeni OlcuFormati alt sınıfı ekle,
+                                             OlcuYakalayici constructor'ına doğru sıraya ekle)
+2. Core/Services/LimitCatcher.cs   DEĞİŞİR  (gerekirse yeni format case'i)
+3. IRSGenerator.Tests/...          DEĞİŞİR  (yeni test senaryosu ekle)
+```
+
+### 4.5 Disposition state machine'i güncellemek
+
+```
+DB üzerinden veya API üzerinden:
+  POST /api/disposition-transitions/bulk-set   [AdminOnly]
+  -- Kod değişikliği GEREKMİYOR, geçişler tamamen DB tabanlıdır.
+
+Yeni bir DispositionType kodu eklenirse:
+  DispositionType kaydını POST /api/disposition-types ile ekle [AdminOnly]
+  Ardından geçiş kurallarını bulk-set ile tanımla.
+```
+
+### 4.6 Yetkilendirme politikası değiştirmek
+
+```
+1. API/Extensions/ServiceExtensions.cs    DEĞİŞİR  (AddAuthorization içindeki politika)
+2. İlgili Controller(lar)                DEĞİŞİR  ([Authorize(Policy="...")] attribute)
+```
+
+### 4.7 Yeni frontend sayfası eklemek
+
+```
+1. wwwroot/static/js/pages/{yeni-sayfa}.js    YENİ  (export async function render(params, root))
+2. wwwroot/static/js/app.js                   DEĞİŞİR  (route tanımı ekle)
+3. wwwroot/index.html                         DEĞİŞİR  (sidebar link ekle, gerekirse)
+4. wwwroot/static/js/api.js                   DEĞİŞİR  (yeni API çağrıları gerekirse)
+```
+
+### 4.8 NuGet paketi güncellemek
+
+```
+1. Paketin ait olduğu proje .csproj dosyası    DEĞİŞİR
+   - IRSGenerator.API.csproj        (Swashbuckle, Microsoft.AspNetCore.*, EF Design)
+   - IRSGenerator.Core.csproj       (Microsoft.EntityFrameworkCore, DocumentFormat.OpenXml)
+   - IRSGenerator.Data.csproj       (EF Core, Npgsql.EntityFrameworkCore.PostgreSQL)
+   - IRSGenerator.Shared.csproj     (bağımlılık yok, değişmesi gerekmez)
+   - IRSGenerator.Tests.csproj      (xUnit, test adaptörleri)
+```
 
 ---
 
-## AŞAMA 6 — Seed data güncelleme (isteğe bağlı)
+## 5. NuGet Paket Bağımlılıkları
 
-DbContext'teki User seed data'sına şifre eklemek için AuthController.HashPassword kullanabilirsiniz:
-```csharp
-User user1 = new() { ..., Role = "admin", Active = true, PasswordHash = "..." };
-```
+### IRSGenerator.API.csproj
 
-Veya ilk giriş için şifresiz bırakın (PasswordHash = null → şifresiz giriş kabul edilir).
+| Paket | Sürüm |
+|---|---|
+| `Microsoft.AspNetCore.Authentication.Negotiate` | 8.0.* |
+| `Microsoft.AspNetCore.OpenApi` | 8.0.25 |
+| `Microsoft.EntityFrameworkCore.Design` | 8.0.* |
+| `Swashbuckle.AspNetCore` | 10.1.7 |
 
----
+### IRSGenerator.Core.csproj
 
-## AŞAMA 7 — Test
+| Paket | Sürüm |
+|---|---|
+| `Microsoft.EntityFrameworkCore` | 8.0.* |
+| `DocumentFormat.OpenXml` | 3.* |
 
-1. Proje başlat: `http://localhost:[port]` → QualiSight UI açılmalı
-2. Admin: `http://localhost:[port]/admin.html`
-3. Swagger: `http://localhost:[port]/swagger`
+### IRSGenerator.Data.csproj
 
----
+| Paket | Sürüm |
+|---|---|
+| `Microsoft.EntityFrameworkCore` | 8.0.* |
+| `Microsoft.EntityFrameworkCore.Design` | 8.0.* |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | 8.0.* |
+| `Microsoft.AspNetCore.Http.Abstractions` | 2.2.0 |
 
-## Mimari Özet
+### IRSGenerator.Tests.csproj
 
-```
-[Tarayıcı — Chrome/Firefox/Edge]
-        │
-        ▼
-IRSGenerator.API (ASP.NET Core 8)
-  ├── /                  → wwwroot/index.html  (QualiSight UI)
-  ├── /api/projects      → ProjectsController  (VisualProject CRUD)
-  ├── /api/auth/login    → AuthController      (sicil + şifre)
-  ├── /api/users         → UsersController
-  ├── /api/inspections   → InspectionsController
-  ├── /api/defects       → DefectsController
-  ├── /api/defect-types  → DefectTypesController
-  ├── /api/defect-fields → DefectFieldsController
-  ├── /api/dispositions              → DispositionsController
-  ├── /api/disposition-types        → DispositionTypesController  (YENİ)
-  ├── /api/disposition-transitions  → DispositionTransitionsController (YENİ)
-  ├── /api/photos        → PhotosController (file upload)
-  └── /api/system-config → VisualSystemConfigController
-        │
-        ▼
-SQL Server / PostgreSQL
-```
+| Paket | Sürüm |
+|---|---|
+| `xunit` | — |
+| `xunit.runner.visualstudio` | — |
+| `Microsoft.NET.Test.Sdk` | — |
 
 ---
 
-## JSON Değişikliği Notu
+## 6. Veritabanı Migration Zinciri
 
-Program.cs'e `JsonNamingPolicy.SnakeCaseLower` eklendi.
-Bu tüm API endpoint'lerini etkiler. WPF client'ı kullanıyorsanız
-HttpClient konfigürasyonuna şunu ekleyin:
-```csharp
-var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+Tüm migration'lar `IRSGenerator.Data/Migrations/` altındadır.
+Uygulanma sırası önemlidir — atlanmamalıdır.
+
+| # | Migration Adı | Ne Ekler |
+|---|---|---|
+| 1 | `20260328112545_InitialCreate` | Tüm temel tablolar: User, IRSProject, Character, Inspection, Defect, DefectType, DefectField, Disposition, DispositionType, DispositionTransition, Photo, VisualProject, NumericPartResult, CategoricalPartResult, CategoricalZoneResult, VisualSystemConfig, Auth tabloları |
+| 2 | `20260329000000_AddInspectionIdToCharacterAndOpSheetPath` | Character.InspectionId, Inspection.OpSheetPath |
+| 3 | `20260329100000_AddNoteToCharacterAndPartLabelToNumericResult` | Character.Note, NumericPartResult.PartLabel |
+| 4 | `20260329200000_AddCharacterIdToDisposition` | Disposition.CharacterId (dimensional karar desteği) |
+| 5 | `20260403230333_AddNcmEntities` | CauseCode tablosu, NcmDispositionType tablosu |
+| 6 | `20260404191854_AddUpdateReasonToNumericPartResult` | NumericPartResult.UpdateReason |
+| 7 | `20260404211136_AddUpdateNoteToNumericPartResult` | NumericPartResult.UpdateNote |
+| 8 | `20260404213554_AddUpdateReasonToCategoricalPartResult` | CategoricalPartResult.UpdateReason |
+
+**Veritabanını sıfırdan kurmak:**
+```bash
+dotnet ef database update --project IRSGenerator.Data --startup-project IRSGenerator.API
 ```
+
+**Yeni migration eklemek:**
+```bash
+dotnet ef migrations add {AciklamaciIsim} \
+  --project IRSGenerator.Data \
+  --startup-project IRSGenerator.API
+```
+
+---
+
+## 7. Frontend Modül Bağımlılıkları
+
+```
+index.html
+  └── app.js          (router — tüm sayfaları lazy-import eder)
+       ├── api.js      (merkezi HTTP katmanı — tüm sayfalar kullanır)
+       └── pages/
+            ├── inspection-detail.js  ── api.js
+            ├── ncm-detail.js         ── api.js
+            ├── character-detail.js   ── api.js
+            └── ...diğer sayfalar     ── api.js
+
+admin.html
+  └── admin.js        (admin SPA router)
+```
+
+**api.js içinde tanımlı nesne grupları (güncelleme referansı):**
+
+```javascript
+api.auth          → /api/auth
+api.projects      → /api/projects
+api.inspections   → /api/inspections
+api.characters    → /api/characters
+api.numericResults        → /api/numeric-part-results
+api.categoricalResults    → /api/categorical-part-results
+api.categoricalZoneResults→ /api/categorical-zone-results
+api.defects       → /api/defects
+api.defectTypes   → /api/defect-types
+api.defectFields  → /api/defect-fields
+api.dispositions  → /api/dispositions
+api.dispositionTypes      → /api/disposition-types
+api.dispositionTransitions→ /api/disposition-transitions
+api.photos        → /api/photos
+api.systemConfig  → /api/system-config
+api.users         → /api/users
+api.ncm           → /api/ncm
+api.causeCodes    → /api/cause-codes
+api.ncmDispositionTypes   → /api/ncm-disposition-types
+```
+
+Yeni bir backend endpoint eklediğinizde mutlaka `api.js`'e de karşılık gelen fonksiyonu ekleyin.

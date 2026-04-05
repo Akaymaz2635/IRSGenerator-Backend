@@ -8,9 +8,11 @@ import { adminUsersPage }            from './pages/admin-users.js';
 import { adminProjectsPage }         from './pages/admin-projects.js';
 import { adminDefectTypesPage }      from './pages/admin-defect-types.js';
 import { adminDefectFieldsPage }     from './pages/admin-defect-fields.js';
-import { adminDispositionTypesPage } from './pages/admin-disposition-types.js';
-import { adminConfigPage }           from './pages/admin-config.js';
-import { adminBackupPage }           from './pages/admin-backup.js';
+import { adminDispositionTypesPage }    from './pages/admin-disposition-types.js';
+import { adminCauseCodesPage }          from './pages/admin-cause-codes.js';
+import { adminNcmDispositionTypesPage } from './pages/admin-ncm-disposition-types.js';
+import { adminConfigPage }              from './pages/admin-config.js';
+import { adminBackupPage }              from './pages/admin-backup.js';
 import { session }                   from './session.js';
 
 // Guard: only admin role may access this panel
@@ -26,8 +28,10 @@ const routes = {
   '/projects':          adminProjectsPage,
   '/defect-types':      adminDefectTypesPage,
   '/defect-fields':     adminDefectFieldsPage,
-  '/disposition-types': adminDispositionTypesPage,
-  '/config':            adminConfigPage,
+  '/disposition-types':     adminDispositionTypesPage,
+  '/cause-codes':           adminCauseCodesPage,
+  '/ncm-disposition-types': adminNcmDispositionTypesPage,
+  '/config':                adminConfigPage,
   '/backup':            adminBackupPage,
 };
 

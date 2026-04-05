@@ -139,6 +139,8 @@ namespace IRSGenerator.Core.Services
             new Regex(@"(?:i)?Rz\s*(\d+(?:[.,]\d+)?)\s*Ra",          RegexOptions.IgnoreCase),
             new Regex(@"Ra\s*(\d+(?:[.,]\d+)?)",                      RegexOptions.IgnoreCase),
             new Regex(@"(\d+(?:[.,]\d+)?)\s*Ra",                      RegexOptions.IgnoreCase),
+            new Regex(@"Rz\s*(\d+(?:[.,]\d+)?)",                      RegexOptions.IgnoreCase),
+            new Regex(@"(\d+(?:[.,]\d+)?)\s*Rz",                      RegexOptions.IgnoreCase),
             new Regex(@"SURFACE QUALITY\s*(\d+(?:[.,]\d+)?)",         RegexOptions.IgnoreCase),
             new Regex(@"(\d+(?:[.,]\d+)?)\s*SURFACE QUALITY",         RegexOptions.IgnoreCase),
         };
@@ -494,10 +496,20 @@ namespace IRSGenerator.Core.Services
 
     public class SembolTolerans : OlcuFormati
     {
+        // Tolerans değeri sembolden ÖNCE gelir: "0.1 ⊥ A"
         private static readonly Dictionary<string, string> SembolMap = new()
         {
             { "⊥", "Perpendicularity" }, { "○", "Position" }, { "↗", "Runout" },
         };
+
+        // Tolerans değeri sembolden SONRA gelir: "⊕ 0.1 A B", "⊘ 0.05 A"
+        private static readonly Dictionary<string, string> PrefixSembolMap = new()
+        {
+            { "⊕", "True Position" },
+            { "⊘", "Concentricity" },
+            { "⊙", "Concentricity" },
+        };
+
         private double? _toleransDegeri;
         private string? _tip;
 
@@ -506,6 +518,11 @@ namespace IRSGenerator.Core.Services
             foreach (var (sembol, tip) in SembolMap)
             {
                 var match = Regex.Match(olcu, @"(\d+(?:[.,]\d+)?)\s*" + Regex.Escape(sembol), RegexOptions.IgnoreCase);
+                if (match.Success) { _toleransDegeri = ParseDouble(match.Groups[1].Value); _tip = tip; return true; }
+            }
+            foreach (var (sembol, tip) in PrefixSembolMap)
+            {
+                var match = Regex.Match(olcu, Regex.Escape(sembol) + @"\s*(\d+(?:[.,]\d+)?)", RegexOptions.IgnoreCase);
                 if (match.Success) { _toleransDegeri = ParseDouble(match.Groups[1].Value); _tip = tip; return true; }
             }
             return false;
@@ -518,6 +535,9 @@ namespace IRSGenerator.Core.Services
     {
         private static readonly List<Regex> Desenler = new()
         {
+            // Fractional NPT/NPTF with optional space: "1/8 NPT", "1/4 NPTF"
+            new Regex(@"\b\d+(?:[/-]\d+)?\s+(?:NPT|NPTF|NPS|BSPT|BSPP)\b",
+                      RegexOptions.IgnoreCase),
             new Regex(@"\b(NPT|NPTF|NPS|UNJ|UNEF|UNC|UNF|UNS|UNR|BSPT|BSPP|ACME)\b",
                       RegexOptions.IgnoreCase),
             // Metric thread: M6, M10x1.5, M8-6H
