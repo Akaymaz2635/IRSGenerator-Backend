@@ -1,103 +1,52 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.Disposition;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.Disposition;
+namespace MES.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
 public class DispositionsController : ControllerBase
 {
-    private readonly IDispositionRepository _repo;
-    private readonly IDispositionTypeRepository _typeRepo;
-
-    public DispositionsController(IDispositionRepository repo, IDispositionTypeRepository typeRepo)
-    {
-        _repo     = repo     ?? throw new ArgumentNullException(nameof(repo));
-        _typeRepo = typeRepo ?? throw new ArgumentNullException(nameof(typeRepo));
-    }
+    private readonly IDispositionService _service;
+    public DispositionsController(IDispositionService service) => _service = service;
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<DispositionReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
-    // GET /api/dispositions?defect_id=X
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DispositionReadDto>>> GetByDefect(
         [FromQuery] long? defect_id = null)
     {
-        if (!defect_id.HasValue)
-            return BadRequest(new { detail = "defect_id gereklidir." });
-
-        var items = await _repo.GetByDefectAsync(defect_id.Value);
-        return Ok(items.Select(ToReadDto));
+        if (!defect_id.HasValue) return BadRequest(new { detail = "defect_id gereklidir." });
+        return Ok(await _service.GetByDefectAsync(defect_id.Value));
     }
 
     [HttpPost]
     [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<DispositionReadDto>> Create([FromBody] DispositionCreateDto dto)
     {
-        if (!string.IsNullOrWhiteSpace(dto.Decision))
+        try
         {
-            var validType = await _typeRepo.GetByCodeAsync(dto.Decision);
-            if (validType is null)
-                return BadRequest(new { detail = $"Geçersiz disposition kodu: '{dto.Decision}'." });
+            var created = await _service.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
-
-        var entity = new Disposition
+        catch (InvalidOperationException ex)
         {
-            DefectId = dto.DefectId,
-            Decision = dto.Decision,
-            EnteredBy = dto.EnteredBy,
-            DecidedAt = dto.DecidedAt.HasValue ? DateTime.SpecifyKind(dto.DecidedAt.Value, DateTimeKind.Utc) : null,
-            Note = dto.Note ?? "",
-            SpecRef = dto.SpecRef,
-            Engineer = dto.Engineer,
-            Reinspector = dto.Reinspector,
-            ConcessionNo = dto.ConcessionNo,
-            VoidReason = dto.VoidReason,
-            RepairRef = dto.RepairRef,
-            ScrapReason = dto.ScrapReason,
-            MeasurementsSnapshot = dto.MeasurementsSnapshot
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToReadDto(created));
+            return BadRequest(new { detail = ex.Message });
+        }
     }
 
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        await _repo.DeleteAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static DispositionReadDto ToReadDto(Disposition d) => new()
-    {
-        Id = d.Id,
-        DefectId = d.DefectId,
-        Decision = d.Decision,
-        EnteredBy = d.EnteredBy,
-        DecidedAt = d.DecidedAt,
-        Note = d.Note,
-        SpecRef = d.SpecRef,
-        Engineer = d.Engineer,
-        Reinspector = d.Reinspector,
-        ConcessionNo = d.ConcessionNo,
-        VoidReason = d.VoidReason,
-        RepairRef = d.RepairRef,
-        ScrapReason = d.ScrapReason,
-        MeasurementsSnapshot = d.MeasurementsSnapshot,
-        CreatedAt = d.CreatedAt
-    };
 }

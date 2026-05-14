@@ -1,100 +1,50 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.DispositionType;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.DispositionType;
+namespace MES.API.Controllers;
 
 [Route("api/disposition-types")]
 [ApiController]
 [Authorize]
 public class DispositionTypesController : ControllerBase
 {
-    private readonly IDispositionTypeRepository _repo;
-
-    public DispositionTypesController(IDispositionTypeRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly IDispositionTypeService _service;
+    public DispositionTypesController(IDispositionTypeService service) => _service = service;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<DispositionTypeReadDto>>> GetAll([FromQuery] bool all = false)
-    {
-        var items = all
-            ? await _repo.GetAllAsync()
-            : await _repo.GetActiveAsync();
-
-        return Ok(items.Select(ToReadDto));
-    }
+    public async Task<ActionResult<IEnumerable<DispositionTypeReadDto>>> GetAll(
+        [FromQuery] bool active_only = false)
+        => Ok(active_only ? await _service.GetActiveAsync() : await _service.GetAllAsync());
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<DispositionTypeReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<DispositionTypeReadDto>> Create([FromBody] DispositionTypeCreateDto dto)
     {
-        var entity = new DispositionType
-        {
-            Code          = dto.Code,
-            Label         = dto.Label,
-            CssClass      = dto.CssClass,
-            IsNeutralizing = dto.IsNeutralizing,
-            IsInitial     = dto.IsInitial,
-            SortOrder     = dto.SortOrder,
-            Active        = true
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToReadDto(created));
+        var created = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] DispositionTypeUpdateDto dto)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        // Code is immutable — never updated
-        if (dto.Label         is not null) entity.Label         = dto.Label;
-        if (dto.CssClass      is not null) entity.CssClass      = dto.CssClass;
-        if (dto.IsNeutralizing.HasValue)   entity.IsNeutralizing = dto.IsNeutralizing.Value;
-        if (dto.IsInitial.HasValue)        entity.IsInitial     = dto.IsInitial.Value;
-        if (dto.SortOrder.HasValue)        entity.SortOrder     = dto.SortOrder.Value;
-        if (dto.Active.HasValue)           entity.Active        = dto.Active.Value;
-
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.UpdateAsync(id, dto); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        await _repo.DeleteAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static DispositionTypeReadDto ToReadDto(DispositionType dt) => new()
-    {
-        Id            = dt.Id,
-        Code          = dt.Code,
-        Label         = dt.Label,
-        CssClass      = dt.CssClass,
-        IsNeutralizing = dt.IsNeutralizing,
-        IsInitial     = dt.IsInitial,
-        SortOrder     = dt.SortOrder,
-        Active        = dt.Active,
-        CreatedAt     = dt.CreatedAt,
-        UpdatedAt     = dt.UpdatedAt
-    };
 }

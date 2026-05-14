@@ -1,67 +1,33 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.DispositionTransition;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.DispositionTransition;
 
-namespace IRSGenerator.API.Controllers;
+namespace MES.API.Controllers;
 
 [Route("api/disposition-transitions")]
 [ApiController]
 [Authorize]
 public class DispositionTransitionsController : ControllerBase
 {
-    private readonly IDispositionTransitionRepository _repo;
+    private readonly IDispositionTransitionService _service;
+    public DispositionTransitionsController(IDispositionTransitionService service) => _service = service;
 
-    public DispositionTransitionsController(IDispositionTransitionRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
-
-    // GET /api/disposition-transitions?from_code=REWORK
-    // GET /api/disposition-transitions               — all transitions
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DispositionTransitionReadDto>>> GetAll(
         [FromQuery] string? from_code = null)
-    {
-        if (from_code is not null)
-        {
-            // "null" string → null (initial transitions)
-            string? code = from_code.Equals("null", StringComparison.OrdinalIgnoreCase) ? null : from_code;
-            var items = await _repo.GetByFromCodeAsync(code);
-            return Ok(items.Select(ToReadDto));
-        }
+        => Ok(await _service.GetAllAsync(from_code));
 
-        var all = await _repo.GetAllAsync();
-        return Ok(all.Select(ToReadDto));
-    }
-
-    // GET /api/disposition-transitions/allowed?current_code=REWORK
-    // Returns string[] of allowed next codes
     [HttpGet("allowed")]
     public async Task<ActionResult<IEnumerable<string>>> GetAllowed(
         [FromQuery] string? current_code = null)
-    {
-        string? code = current_code == null || current_code.Equals("null", StringComparison.OrdinalIgnoreCase)
-            ? null : current_code;
+        => Ok(await _service.GetAllowedNextCodesAsync(current_code));
 
-        var codes = await _repo.GetAllowedNextCodesAsync(code);
-        return Ok(codes);
-    }
-
-    // POST /api/disposition-transitions/bulk-set
-    // Atomically replaces all transitions for a given fromCode
     [HttpPost("bulk-set")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> BulkSet([FromBody] DispositionTransitionBulkSetDto dto)
     {
-        await _repo.BulkSetAsync(dto.FromCode, dto.ToCodes);
+        await _service.BulkSetAsync(dto);
         return NoContent();
     }
-
-    private static DispositionTransitionReadDto ToReadDto(Core.Entities.DispositionTransition t) => new()
-    {
-        Id       = t.Id,
-        FromCode = t.FromCode,
-        ToCode   = t.ToCode
-    };
 }

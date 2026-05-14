@@ -1,107 +1,43 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.CategoricalPartResult;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.CategoricalPartResult;
+namespace MES.API.Controllers;
 
 [Route("api/categorical-part-results")]
 [ApiController]
 [Authorize]
 public class CategoricalPartResultsController : ControllerBase
 {
-    private readonly ICategoricalPartResultRepository _repo;
-
-    public CategoricalPartResultsController(ICategoricalPartResultRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly ICategoricalPartResultService _service;
+    public CategoricalPartResultsController(ICategoricalPartResultService service) => _service = service;
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoricalPartResultReadDto>>> GetAll(
         [FromQuery(Name = "character_id")] long? characterId = null)
-    {
-        IEnumerable<CategoricalPartResult> items = characterId.HasValue
-            ? await _repo.GetByCharacterIdAsync(characterId.Value)
-            : await _repo.GetAllAsync();
-
-        return Ok(items.Select(ToDto));
-    }
+        => Ok(await _service.GetAllAsync(characterId));
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<CategoricalPartResultReadDto>> GetById(long id)
-    {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToDto(entity));
-    }
+    { var dto = await _service.GetByIdAsync(id); return dto is null ? NotFound() : Ok(dto); }
 
     [HttpPost]
     [Authorize(Policy = "CanWrite")]
-    public async Task<ActionResult<CategoricalPartResultReadDto>> Create(
-        [FromBody] CategoricalPartResultCreateDto dto)
-    {
-        var entity = new CategoricalPartResult
-        {
-            Index          = dto.Index,
-            IsConfirmed    = dto.IsConfirmed,
-            AdditionalInfo = dto.AdditionalInfo,
-            CharacterId    = dto.CharacterId,
-            UpdateReason   = dto.UpdateReason,
-            UpdateNote     = dto.UpdateNote,
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToDto(created));
-    }
+    public async Task<ActionResult<CategoricalPartResultReadDto>> Create([FromBody] CategoricalPartResultCreateDto dto)
+    { var c = await _service.CreateAsync(dto); return CreatedAtAction(nameof(GetById), new { id = c.Id }, c); }
 
     [HttpPut("{id:long}")]
     [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] CategoricalPartResultCreateDto dto)
-    {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        entity.Index          = dto.Index;
-        entity.IsConfirmed    = dto.IsConfirmed;
-        entity.AdditionalInfo = dto.AdditionalInfo;
-        entity.UpdateReason   = dto.UpdateReason;
-        entity.UpdateNote     = dto.UpdateNote;
-        await _repo.UpdateAsync(entity);
-        return NoContent();
-    }
+    { try { await _service.UpdateAsync(id, dto); return NoContent(); } catch (Exception) { return NotFound(); } }
 
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
-    {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        await _repo.DeleteAsync(entity);
-        return NoContent();
-    }
+    { try { await _service.DeleteAsync(id); return NoContent(); } catch (Exception) { return NotFound(); } }
 
     [HttpDelete]
     [Authorize(Policy = "CanWrite")]
-    public async Task<IActionResult> DeleteByCharacter(
-        [FromQuery(Name = "character_id")] long? characterId)
-    {
-        if (!characterId.HasValue) return BadRequest("character_id is required");
-        var items = await _repo.GetByCharacterIdAsync(characterId.Value);
-        foreach (var item in items)
-            await _repo.DeleteAsync(item);
-        return NoContent();
-    }
-
-    private static CategoricalPartResultReadDto ToDto(CategoricalPartResult e) => new()
-    {
-        Id             = e.Id,
-        Index          = e.Index,
-        IsConfirmed    = e.IsConfirmed,
-        AdditionalInfo = e.AdditionalInfo,
-        CharacterId    = e.CharacterId,
-        UpdateReason   = e.UpdateReason,
-        UpdateNote     = e.UpdateNote,
-        CreatedAt      = e.CreatedAt,
-        UpdatedAt      = e.UpdatedAt,
-    };
+    public async Task<IActionResult> DeleteByCharacter([FromQuery(Name = "character_id")] long? characterId)
+    { if (!characterId.HasValue) return BadRequest("character_id is required"); await _service.DeleteByCharacterAsync(characterId.Value); return NoContent(); }
 }

@@ -1,145 +1,73 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.Photo;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.Photo;
+namespace MES.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
 public class PhotosController : ControllerBase
 {
-    private readonly IPhotoRepository _repo;
+    private readonly IPhotoService _service;
     private readonly IWebHostEnvironment _env;
-
-    public PhotosController(IPhotoRepository repo, IWebHostEnvironment env)
+    public PhotosController(IPhotoService service, IWebHostEnvironment env)
     {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-        _env = env ?? throw new ArgumentNullException(nameof(env));
+        _service = service;
+        _env     = env;
     }
 
-    // GET /api/photos?inspection_id=X   veya   ?defect_id=X
+    private string UploadPath => Path.Combine(_env.ContentRootPath, "uploads");
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PhotoReadDto>>> GetAll(
         [FromQuery] long? inspection_id = null,
-        [FromQuery] long? defect_id = null)
-    {
-        IEnumerable<Photo> items;
-
-        if (inspection_id.HasValue)
-            items = await _repo.GetByInspectionAsync(inspection_id.Value);
-        else if (defect_id.HasValue)
-            items = await _repo.GetByDefectAsync(defect_id.Value);
-        else
-            items = await _repo.GetAllAsync();
-
-        return Ok(items.Select(ToReadDto));
-    }
+        [FromQuery] long? defect_id     = null)
+        => Ok(await _service.GetAllAsync(inspection_id, defect_id));
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<PhotoReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
-    // GET /api/photos/{id}/file  →  fotoğraf dosyasını yönlendir
     [HttpGet("{id:long}/file")]
     public async Task<IActionResult> GetFile(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Redirect(entity.Filepath);
+        try
+        {
+            var (content, contentType, fileName) = await _service.GetFileAsync(id, UploadPath);
+            return File(content, contentType, fileName);
+        }
+        catch (Exception) { return NotFound(); }
     }
 
-    // POST /api/photos?inspection_id=X&defect_ids=Y&defect_ids=Z
-    // Body: multipart/form-data  →  file=<binary>
     [HttpPost]
-    [Consumes("multipart/form-data")]
     [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<PhotoReadDto>> Upload(
-        [FromQuery] long inspection_id,
-        [FromQuery] long[]? defect_ids,
-        IFormFile? file)
+        IFormFile file,
+        [FromQuery] long inspection_id)
     {
-        if (file is null || file.Length == 0)
-            return BadRequest(new { detail = "Dosya gönderilmedi." });
-
-        // wwwroot/photos/ klasörüne kaydet
-        var photosDir = Path.Combine(_env.WebRootPath, "photos");
-        Directory.CreateDirectory(photosDir);
-
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (string.IsNullOrEmpty(ext)) ext = ".jpg";
-        var filename = $"{Guid.NewGuid()}{ext}";
-        var fullPath = Path.Combine(photosDir, filename);
-
-        await using (var stream = System.IO.File.Create(fullPath))
-            await file.CopyToAsync(stream);
-
-        var filepath = $"/photos/{filename}";
-
-        var entity = new Photo
-        {
-            InspectionId = inspection_id,
-            Filename = filename,
-            Filepath = filepath
-        };
-        var created = await _repo.AddAsync(entity);
-
-        if (defect_ids is { Length: > 0 })
-            foreach (var did in defect_ids)
-                await _repo.LinkDefectAsync(created.Id, did);
-
-        // Tekrar getir (PhotoDefects yüklü)
-        var refreshed = await _repo.GetByIdAsync(created.Id,
-            q => q.Include(p => p.PhotoDefects)) ?? created;
-
-        return CreatedAtAction(nameof(GetById), new { id = refreshed.Id }, ToReadDto(refreshed));
+        if (file.Length == 0) return BadRequest(new { detail = "Dosya boş." });
+        await using var stream = file.OpenReadStream();
+        var created = await _service.UploadAsync(stream, file.FileName, file.ContentType, inspection_id, UploadPath);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    // PUT /api/photos/{id}/defects
     [HttpPut("{id:long}/defects")]
     [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> SetDefects(long id, [FromBody] long[] defectIds)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        await _repo.SetDefectsAsync(id, defectIds);
-        return NoContent();
+        try { await _service.SetDefectsAsync(id, defectIds); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        // Fiziksel dosyayı da sil (varsa)
-        if (!string.IsNullOrEmpty(entity.Filepath))
-        {
-            var fullPath = Path.Combine(_env.WebRootPath, entity.Filepath.TrimStart('/'));
-            if (System.IO.File.Exists(fullPath))
-                System.IO.File.Delete(fullPath);
-        }
-
-        await _repo.DeleteAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id, UploadPath); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static PhotoReadDto ToReadDto(Photo p) => new()
-    {
-        Id = p.Id,
-        InspectionId = p.InspectionId,
-        Filename = p.Filename,
-        Filepath = p.Filepath,
-        DefectIds = p.PhotoDefects.Select(pd => pd.DefectId).ToList(),
-        CreatedAt = p.CreatedAt
-    };
 }

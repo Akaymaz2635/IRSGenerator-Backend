@@ -1,86 +1,49 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.Project;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.Project;
+namespace MES.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
 public class ProjectsController : ControllerBase
 {
-    private readonly IVisualProjectRepository _repo;
-
-    public ProjectsController(IVisualProjectRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly IVisualProjectService _service;
+    public ProjectsController(IVisualProjectService service) => _service = service;
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectReadDto>>> GetAll([FromQuery] bool all = false)
-    {
-        var items = all
-            ? await _repo.GetAllAsync()
-            : await _repo.GetActiveAsync();
-
-        return Ok(items.Select(ToReadDto));
-    }
+        => Ok(await _service.GetAllAsync(all));
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ProjectReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<ProjectReadDto>> Create([FromBody] ProjectCreateDto dto)
     {
-        var entity = new VisualProject
-        {
-            Name = dto.Name,
-            Active = true
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToReadDto(created));
+        var created = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] ProjectUpdateDto dto)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        if (dto.Name is not null) entity.Name = dto.Name;
-        if (dto.Active.HasValue) entity.Active = dto.Active.Value;
-
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.UpdateAsync(id, dto); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
-    // DELETE → soft delete (active = false)
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        entity.Active = false;
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static ProjectReadDto ToReadDto(VisualProject p) => new()
-    {
-        Id = p.Id,
-        Name = p.Name,
-        Active = p.Active,
-        CreatedAt = p.CreatedAt
-    };
 }

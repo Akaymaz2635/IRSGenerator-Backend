@@ -1,104 +1,50 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.User;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.User;
+namespace MES.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
+[Authorize]
 public class UsersController : ControllerBase
 {
-    private readonly IUserRepository _repo;
-
-    public UsersController(IUserRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly IUserService _service;
+    public UsersController(IUserService service) => _service = service;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserReadDto>>> GetAll([FromQuery] bool all = true)
-    {
-        var items = await _repo.GetAllAsync();
-        if (!all)
-            items = items.Where(u => u.Active);
-
-        return Ok(items.Select(ToReadDto));
-    }
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<IEnumerable<UserReadDto>>> GetAll()
+        => Ok(await _service.GetAllAsync());
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<UserReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UserReadDto>> Create([FromBody] UserCreateDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.EmployeeId))
-            return BadRequest(new { detail = "Sicil no boş olamaz." });
-        if (string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { detail = "Şifre boş olamaz." });
-
-        // Sicil çakışması
-        var existing = await _repo.GetByEmployeeIdAsync(dto.EmployeeId.Trim());
-        if (existing is not null)
-            return Conflict(new { detail = "Bu sicil numarası zaten kayıtlı." });
-
-        var entity = new User
-        {
-            EmployeeId = dto.EmployeeId.Trim(),
-            DisplayName = dto.Name,
-            FirstName = dto.Name,
-            LastName = "",
-            WindowsAccount = "",
-            Role = dto.Role,
-            Active = true,
-            PasswordHash = AuthController.HashPassword(dto.Password)
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToReadDto(created));
+        var created = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] UserUpdateDto dto)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        if (dto.Name is not null) { entity.DisplayName = dto.Name; entity.FirstName = dto.Name; }
-        if (dto.Role is not null) entity.Role = dto.Role;
-        if (dto.Active.HasValue) entity.Active = dto.Active.Value;
-        if (!string.IsNullOrEmpty(dto.Password))
-            entity.PasswordHash = AuthController.HashPassword(dto.Password);
-
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.UpdateAsync(id, dto); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
-    // DELETE → soft delete (active = false)
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> Deactivate(long id)
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        entity.Active = false;
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static UserReadDto ToReadDto(User u) => new()
-    {
-        Id = u.Id,
-        EmployeeId = u.EmployeeId,
-        Name = u.DisplayName,
-        Role = u.Role,
-        Active = u.Active,
-        CreatedAt = u.CreatedAt
-    };
 }

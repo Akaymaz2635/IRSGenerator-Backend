@@ -1,106 +1,50 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.DefectField;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.DefectField;
+namespace MES.API.Controllers;
 
 [Route("api/defect-fields")]
 [ApiController]
 [Authorize]
 public class DefectFieldsController : ControllerBase
 {
-    private readonly IDefectFieldRepository _repo;
-
-    public DefectFieldsController(IDefectFieldRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly IDefectFieldService _service;
+    public DefectFieldsController(IDefectFieldService service) => _service = service;
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DefectFieldReadDto>>> GetAll(
         [FromQuery] long? defect_type_id = null)
-    {
-        IEnumerable<DefectField> items;
-        if (defect_type_id.HasValue)
-            items = await _repo.GetByDefectTypeAsync(defect_type_id.Value);
-        else
-            items = await _repo.GetAllAsync();
-
-        return Ok(items.Select(ToReadDto));
-    }
+        => Ok(await _service.GetAllAsync(defect_type_id));
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<DefectFieldReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToReadDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<DefectFieldReadDto>> Create([FromBody] DefectFieldCreateDto dto)
     {
-        var entity = new DefectField
-        {
-            DefectTypeId = dto.DefectTypeId,
-            FieldName = dto.FieldName,
-            Label = dto.Label,
-            FieldType = dto.FieldType,
-            Required = dto.Required,
-            Unit = dto.Unit,
-            MinValue = dto.MinValue,
-            MaxValue = dto.MaxValue,
-            SortOrder = dto.SortOrder
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToReadDto(created));
+        var created = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Update(long id, [FromBody] DefectFieldUpdateDto dto)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        if (dto.Label is not null) entity.Label = dto.Label;
-        if (dto.FieldType is not null) entity.FieldType = dto.FieldType;
-        if (dto.Required.HasValue) entity.Required = dto.Required.Value;
-        if (dto.Unit is not null) entity.Unit = dto.Unit;
-        if (dto.MinValue.HasValue) entity.MinValue = dto.MinValue.Value;
-        if (dto.MaxValue.HasValue) entity.MaxValue = dto.MaxValue.Value;
-        if (dto.SortOrder.HasValue) entity.SortOrder = dto.SortOrder.Value;
-
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.UpdateAsync(id, dto); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-
-        await _repo.DeleteAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static DefectFieldReadDto ToReadDto(DefectField f) => new()
-    {
-        Id = f.Id,
-        DefectTypeId = f.DefectTypeId,
-        FieldName = f.FieldName,
-        Label = f.Label,
-        FieldType = f.FieldType,
-        Required = f.Required,
-        Unit = f.Unit,
-        MinValue = f.MinValue,
-        MaxValue = f.MaxValue,
-        SortOrder = f.SortOrder,
-        CreatedAt = f.CreatedAt
-    };
 }

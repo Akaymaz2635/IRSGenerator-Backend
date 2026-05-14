@@ -1,90 +1,49 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using IRSGenerator.Core.Entities;
-using IRSGenerator.Core.Repositories;
-using IRSGenerator.Shared.Dtos.IRSProject;
-
-namespace IRSGenerator.API.Controllers;
+using MES.Application.Interfaces;
+using MES.Domain.Dtos.IRSProject;
+namespace MES.API.Controllers;
 
 [Route("api/irs-projects")]
 [ApiController]
+[Authorize]
 public class IRSProjectsController : ControllerBase
 {
-    private readonly IIRSProjectRepository _repo;
-
-    public IRSProjectsController(IIRSProjectRepository repo)
-    {
-        _repo = repo ?? throw new ArgumentNullException(nameof(repo));
-    }
+    private readonly IIRSProjectService _service;
+    public IRSProjectsController(IIRSProjectService service) => _service = service;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<IRSProjectReadDto>>> GetAll(
-        [FromQuery] long? ownerId = null)
-    {
-        IEnumerable<IRSProject> items = ownerId.HasValue
-            ? await _repo.GetByOwnerIdAsync(ownerId.Value)
-            : await _repo.GetAllAsync();
-
-        return Ok(items.Select(ToDto));
-    }
+    public async Task<ActionResult<IEnumerable<IRSProjectReadDto>>> GetAll()
+        => Ok(await _service.GetAllAsync());
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<IRSProjectReadDto>> GetById(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        return Ok(ToDto(entity));
+        var dto = await _service.GetByIdAsync(id);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost]
+    [Authorize(Policy = "CanWrite")]
     public async Task<ActionResult<IRSProjectReadDto>> Create([FromBody] IRSProjectCreateDto dto)
     {
-        var entity = new IRSProject
-        {
-            ProjectType  = dto.ProjectType,
-            PartNumber   = dto.PartNumber,
-            Operation    = dto.Operation,
-            SerialNumber = dto.SerialNumber,
-            OpSheetPath  = dto.OpSheetPath,
-            OwnerId      = dto.OwnerId,
-        };
-        var created = await _repo.AddAsync(entity);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToDto(created));
+        var created = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Update(long id, [FromBody] IRSProjectCreateDto dto)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        entity.ProjectType  = dto.ProjectType;
-        entity.PartNumber   = dto.PartNumber;
-        entity.Operation    = dto.Operation;
-        entity.SerialNumber = dto.SerialNumber;
-        entity.OpSheetPath  = dto.OpSheetPath;
-        entity.OwnerId      = dto.OwnerId;
-        await _repo.UpdateAsync(entity);
-        return NoContent();
+        try { await _service.UpdateAsync(id, dto); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = "CanWrite")]
     public async Task<IActionResult> Delete(long id)
     {
-        var entity = await _repo.GetByIdAsync(id);
-        if (entity is null) return NotFound();
-        await _repo.DeleteAsync(entity);
-        return NoContent();
+        try { await _service.DeleteAsync(id); return NoContent(); }
+        catch (Exception) { return NotFound(); }
     }
-
-    private static IRSProjectReadDto ToDto(IRSProject e) => new()
-    {
-        Id           = e.Id,
-        ProjectType  = e.ProjectType,
-        PartNumber   = e.PartNumber,
-        Operation    = e.Operation,
-        SerialNumber = e.SerialNumber,
-        OpSheetPath  = e.OpSheetPath,
-        OwnerId      = e.OwnerId,
-        CreatedAt    = e.CreatedAt,
-        UpdatedAt    = e.UpdatedAt,
-    };
 }
